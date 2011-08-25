@@ -1,149 +1,12 @@
-#define RRD_EXPORT_DEPRECATED
-#include "buffer.h"
+#include "roundrobin.h"
 #include <stdio.h>
 #include <stdlib.h>
-#include <rrd.h>
-#include <assert.h>
-#include <sys/types.h>
-#include <sys/stat.h>
+#include <unistd.h>
+#include <sys/time.h>
+#include <string.h>
 #include <errno.h>
-#include <math.h>
-typedef unsigned short u_short; // Why would i need this?
-#include <fts.h>
 
-#define RRD_READONLY 1
 #define STDASSERT(val) if(val < 0) { perror(#val); abort(); }
-
-void add_info(buffer_t *buf, char *filename) {
-    rrd_t rrd;
-    rrd_file_t *rrd_file;
-    rrd_init(&rrd);
-    rrd_file = rrd_open(filename, &rrd, RRD_READONLY);
-    assert(rrd_file);
-    STDASSERT(buffer_printf(buf, "{\n"));
-    STDASSERT(buffer_printf(buf, "\"step\": %d,\n",
-        rrd.stat_head->pdp_step));
-    STDASSERT(buffer_printf(buf, "\"last_update\": %d,\n",
-        rrd.live_head->last_up));
-    STDASSERT(buffer_printf(buf, "\"data_sets\": {\n"));
-    for (int i = 0; i < rrd.stat_head->ds_cnt; i++) {
-        STDASSERT(buffer_printf(buf, "\"%s\": {\n",
-            rrd.ds_def[i].ds_nam));
-        STDASSERT(buffer_printf(buf, "\"index\": %d,\n", i));
-        STDASSERT(buffer_printf(buf, "\"type\": \"%s\",\n",
-            rrd.ds_def[i].dst));
-        STDASSERT(buffer_printf(buf, "\"last_ds\": \"%s\",\n",
-            rrd.pdp_prep[i].last_ds));
-        STDASSERT(buffer_printf(buf, "\"value\": %f,\n",
-            rrd.pdp_prep[i].scratch[PDP_val].u_val));
-        STDASSERT(buffer_printf(buf, "\"unknown_sec\": %f\n",
-            rrd.pdp_prep[i].scratch[PDP_unkn_sec_cnt].u_cnt));
-        if(i < rrd.stat_head->ds_cnt-1) {
-            STDASSERT(buffer_printf(buf, "},\n"));
-        } else {
-            STDASSERT(buffer_printf(buf, "}\n"));
-        }
-    }
-    STDASSERT(buffer_printf(buf, "},\n"));
-    STDASSERT(buffer_printf(buf, "\"archives\": [\n"));
-    for (int i = 0; i < rrd.stat_head->rra_cnt; i++) {
-        STDASSERT(buffer_printf(buf, "{\n"));
-        STDASSERT(buffer_printf(buf, "\"consolidation_func\": \"%s\",\n",
-            rrd.rra_def[i].cf_nam));
-        STDASSERT(buffer_printf(buf, "\"rows\": %d,\n",
-            rrd.rra_def[i].row_cnt));
-        STDASSERT(buffer_printf(buf, "\"current_row\": %d,\n",
-            rrd.rra_ptr[i].cur_row));
-        STDASSERT(buffer_printf(buf, "\"pdp_per_row\": %d\n",
-            rrd.rra_def[i].pdp_cnt));
-        if(i < rrd.stat_head->rra_cnt-1) {
-            STDASSERT(buffer_printf(buf, "},\n"));
-        } else {
-            STDASSERT(buffer_printf(buf, "}\n"));
-        }
-    }
-    STDASSERT(buffer_printf(buf, "]}\n"));
-    rrd_close(rrd_file);
-    rrd_free(&rrd);
-}
-
-void traverse_tree(buffer_t *buf, char **argv) {
-    FTS *fts = fts_open(argv, FTS_LOGICAL, NULL);
-    assert(fts);
-    FTSENT *entry;
-    STDASSERT(buffer_printf(buf, "{\n"));
-    for(int i = 0;;) {
-        entry = fts_read(fts);
-        if(!entry) break;
-        if(entry->fts_info != FTS_F) continue;
-        if(i) {
-            buffer_printf(buf, ",\n");
-        }
-        STDASSERT(buffer_printf(buf, "\"%s\":\n", entry->fts_path));
-        add_info(buf, entry->fts_accpath);
-        ++i;
-    }
-    STDASSERT(buffer_printf(buf, "}\n"));
-    STDASSERT(fts_close(fts));
-}
-
-void show_data(buffer_t *buf, char *filename, char *cf,
-    time_t start, time_t end, unsigned long step) {
-    unsigned long nds=2;
-    char **dnames;
-    rrd_value_t *data;
-    STDASSERT(rrd_fetch_r(filename, cf, &start, &end, &step,
-        &nds, &dnames, &data));
-    STDASSERT(buffer_printf(buf, "{\n"));
-    STDASSERT(buffer_printf(buf, "\"consolidation_function\": \"%s\",\n", cf));
-    STDASSERT(buffer_printf(buf, "\"start\": \"%lu\",\n", start));
-    STDASSERT(buffer_printf(buf, "\"end\": \"%lu\",\n", end));
-    STDASSERT(buffer_printf(buf, "\"step\": \"%lu\",\n", step));
-    STDASSERT(buffer_printf(buf, "\"datasets\": [\n"));
-    for(int i = 0; i < nds; ++i) {
-        STDASSERT(buffer_printf(buf, "\"%s\"", dnames[i]));
-        if(i != nds-1) {
-            STDASSERT(buffer_printf(buf, ",\n"));
-        } else {
-            STDASSERT(buffer_printf(buf, "\n"));
-        }
-    }
-    STDASSERT(buffer_printf(buf, "],\n"));
-    STDASSERT(buffer_printf(buf, "\"data\": [\n"));
-    int rows = (end - start) / step + 1;
-    for(int j = 0; j < rows; ++j) {
-        STDASSERT(buffer_printf(buf, "["));
-        for(int i = 0; i < nds; ++i) {
-            double val = data[j*nds + i];
-            if(isinf(val) || isnan(val)) {
-                if(i < nds - 1) {
-                    STDASSERT(buffer_printf(buf, "null,"));
-                } else {
-                    STDASSERT(buffer_printf(buf, "null"));
-                }
-            } else {
-                if(i < nds - 1) {
-                    STDASSERT(buffer_printf(buf, "%f,", val));
-                } else {
-                    STDASSERT(buffer_printf(buf, "%f", val));
-                }
-            }
-        }
-        if(j < rows - 1) {
-            STDASSERT(buffer_printf(buf, "],\n"));
-        } else {
-            STDASSERT(buffer_printf(buf, "]"));
-        }
-    }
-
-    STDASSERT(buffer_printf(buf, "]\n"));
-    STDASSERT(buffer_printf(buf, "}\n"));
-    free(data);
-    for(int i = 0; i < nds; ++i) {
-        free(dnames[i]);
-    }
-    free(dnames);
-}
 
 int main(int argc, char **argv) {
     buffer_t buf;
@@ -162,7 +25,7 @@ int main(int argc, char **argv) {
                 start = strtol(argv[4], NULL, 10);
                 end = strtol(argv[5], NULL, 10);
                 step = strtol(argv[6], NULL, 10);
-                show_data(&buf, argv[2], argv[3], start, end, step);
+                format_data(&buf, argv[2], argv[3], start, end, step);
             }
         } else {
             fprintf(stderr, "Wrong command ``%s''\n", argv[1]);

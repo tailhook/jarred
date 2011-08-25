@@ -20,8 +20,6 @@ def options(opt):
 
 def configure(conf):
     conf.load('compiler_c')
-    conf.find_program('rst2man', var='RST2MAN')
-    conf.find_program('gzip', var='GZIP')
 
 def build(bld):
     import coyaml.waf
@@ -29,7 +27,8 @@ def build(bld):
         features     = ['c', 'cprogram'],
         source       = [
             'src/cli.c',
-            'src/buffer.c'
+            'src/buffer.c',
+            'src/roundrobin.c',
             ],
         target       = 'jarred-cli',
         includes     = ['src'],
