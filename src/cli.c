@@ -138,6 +138,11 @@ void show_data(buffer_t *buf, char *filename, char *cf,
 
     STDASSERT(buffer_printf(buf, "]\n"));
     STDASSERT(buffer_printf(buf, "}\n"));
+    free(data);
+    for(int i = 0; i < nds; ++i) {
+        free(dnames[i]);
+    }
+    free(dnames);
 }
 
 int main(int argc, char **argv) {
