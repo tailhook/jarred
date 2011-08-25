@@ -7,7 +7,8 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <errno.h>
-typedef unsigned short u_short;
+#include <math.h>
+typedef unsigned short u_short; // Why would i need this?
 #include <fts.h>
 
 #define RRD_READONLY 1
@@ -86,11 +87,82 @@ void traverse_tree(buffer_t *buf, char **argv) {
     STDASSERT(fts_close(fts));
 }
 
+void show_data(buffer_t *buf, char *filename, char *cf,
+    time_t start, time_t end, unsigned long step) {
+    unsigned long nds=2;
+    char **dnames;
+    rrd_value_t *data;
+    STDASSERT(rrd_fetch_r(filename, cf, &start, &end, &step,
+        &nds, &dnames, &data));
+    STDASSERT(buffer_printf(buf, "{\n"));
+    STDASSERT(buffer_printf(buf, "\"consolidation_function\": \"%s\",\n", cf));
+    STDASSERT(buffer_printf(buf, "\"start\": \"%lu\",\n", start));
+    STDASSERT(buffer_printf(buf, "\"end\": \"%lu\",\n", end));
+    STDASSERT(buffer_printf(buf, "\"step\": \"%lu\",\n", step));
+    STDASSERT(buffer_printf(buf, "\"datasets\": [\n"));
+    for(int i = 0; i < nds; ++i) {
+        STDASSERT(buffer_printf(buf, "\"%s\"", dnames[i]));
+        if(i != nds-1) {
+            STDASSERT(buffer_printf(buf, ",\n"));
+        } else {
+            STDASSERT(buffer_printf(buf, "\n"));
+        }
+    }
+    STDASSERT(buffer_printf(buf, "],\n"));
+    STDASSERT(buffer_printf(buf, "\"data\": [\n"));
+    int rows = (end - start) / step + 1;
+    for(int j = 0; j < rows; ++j) {
+        STDASSERT(buffer_printf(buf, "["));
+        for(int i = 0; i < nds; ++i) {
+            double val = data[j*nds + i];
+            if(isinf(val) || isnan(val)) {
+                if(i < nds - 1) {
+                    STDASSERT(buffer_printf(buf, "null,"));
+                } else {
+                    STDASSERT(buffer_printf(buf, "null"));
+                }
+            } else {
+                if(i < nds - 1) {
+                    STDASSERT(buffer_printf(buf, "%f,", val));
+                } else {
+                    STDASSERT(buffer_printf(buf, "%f", val));
+                }
+            }
+        }
+        if(j < rows - 1) {
+            STDASSERT(buffer_printf(buf, "],\n"));
+        } else {
+            STDASSERT(buffer_printf(buf, "]"));
+        }
+    }
+
+    STDASSERT(buffer_printf(buf, "]\n"));
+    STDASSERT(buffer_printf(buf, "}\n"));
+}
+
 int main(int argc, char **argv) {
     buffer_t buf;
     STDASSERT(buffer_init(&buf, 4096));
 
-    traverse_tree(&buf, argv+1);
+    if(argc >= 2) {
+        if(!strcmp(argv[1], "index")) {
+            traverse_tree(&buf, argv+2);
+        } else if(!strcmp(argv[1], "fetch")) {
+            if(argc < 7) {
+                fprintf(stderr, "At least 6 arguments expected:"
+                    "filename consolidation_func start end step ds_names");
+            } else {
+                time_t start, end;
+                unsigned long step;
+                start = strtol(argv[4], NULL, 10);
+                end = strtol(argv[5], NULL, 10);
+                step = strtol(argv[6], NULL, 10);
+                show_data(&buf, argv[2], argv[3], start, end, step);
+            }
+        } else {
+            fprintf(stderr, "Wrong command ``%s''\n", argv[1]);
+        }
+    }
 
     char *start = buf.data;
     char *end = buf.data + buf.size;
