@@ -11,9 +11,10 @@ Routing:
     routing: !Prefix ~
     routing-by: !Uri ~
     map:
-        "/*":
+        "/rrd/*":
           zmq-forward:
             enabled: yes
+            timeout: 5
             contents:
             - !Uri
             socket:

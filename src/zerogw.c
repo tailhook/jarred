@@ -23,6 +23,7 @@ void print_usage(FILE *out) {
     fprintf(out, "  -c      Zeromq address to connect to\n");
     fprintf(out, "  -b      Zeromq address to bind to\n");
     fprintf(out, "  -d      Directory to serve rrd files from\n");
+    fprintf(out, "  -p      Url path prefix to strip from target path\n");
 }
 
 void free_buffer(void *data, buffer_t *buf) {
@@ -30,9 +31,8 @@ void free_buffer(void *data, buffer_t *buf) {
     free(buf);
 }
 
-void parse_and_execute(char *dir, zmq_msg_t *msg, buffer_t *buf) {
-    char *url = zmq_msg_data(msg);
-    char *urlend = url + zmq_msg_size(msg);
+void parse_and_execute(char *dir, char *url, int ulen, buffer_t *buf) {
+    char *urlend = url + ulen;
     if(urlend == url)
         return; // Empty path, can't do anything
     if(urlend[-1] == '/') {
@@ -111,9 +111,11 @@ int main(int argc, char **argv) {
     void *zmqsock = zmq_socket(zmqcontext, ZMQ_REP);
     assert(zmqsock);
     char *dir = NULL;
+    char *prefix = "";
+    int prefixlen = 0;
 
     int opt;
-    while((opt = getopt(argc, argv, "hc:b:d:")) != -1) {
+    while((opt = getopt(argc, argv, "hc:b:d:p:")) != -1) {
         switch(opt) {
         case 'c': // connect
             STDASSERT(zmq_connect(zmqsock, optarg))
@@ -123,6 +125,10 @@ int main(int argc, char **argv) {
             break;
         case 'd': // dir
             dir = optarg;
+            break;
+        case 'p': // dir
+            prefix = optarg;
+            prefixlen = strlen(optarg);
             break;
         case 'h':
             print_usage(stdout);
@@ -151,7 +157,17 @@ int main(int argc, char **argv) {
         assert(!opt); // could reopen socket, but restart is ok
         buffer_t *buf = malloc(sizeof(buffer_t));
         buffer_init(buf, 1024);
-        parse_and_execute(dir, &msg, buf);
+        char *data = zmq_msg_data(&msg);
+        int dlen = zmq_msg_size(&msg);
+        if(dlen < prefixlen) {
+            buffer_printf(buf, "{\"error\": \"uri too short\"}");
+        } else if(memcmp(data, prefix, prefixlen)) {
+            buffer_printf(buf, "{\"error\": \"wrong path prefix\"}");
+        } else {
+            data += prefixlen;
+            dlen -= prefixlen;
+            parse_and_execute(dir, data, dlen, buf);
+        }
         zmq_msg_init_data(&msg, buf->data, buf->size,
             (void (*)(void*, void*))free_buffer, buf);
         STDASSERT(zmq_send(zmqsock, &msg, 0));
