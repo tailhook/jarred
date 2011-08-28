@@ -69,7 +69,7 @@ static void add_info(buffer_t *buf, char *filename) {
     rrd_free(&rrd);
 }
 
-void traverse_tree(buffer_t *buf, char **dirs) {
+void traverse_tree(buffer_t *buf, char **dirs, int strip_ch) {
     FTS *fts = fts_open(dirs, FTS_LOGICAL, NULL);
     assert(fts);
     FTSENT *entry;
@@ -81,7 +81,7 @@ void traverse_tree(buffer_t *buf, char **dirs) {
         if(i) {
             buffer_printf(buf, ",\n");
         }
-        STDASSERT(buffer_printf(buf, "\"%s\":\n", entry->fts_path));
+        STDASSERT(buffer_printf(buf, "\"%s\":\n", entry->fts_path+strip_ch));
         add_info(buf, entry->fts_accpath);
         ++i;
     }

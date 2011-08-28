@@ -35,6 +35,18 @@ def build(bld):
         cflags       = ['-std=c99', '-Wall'],
         lib          = ['rrd'],
         )
+    bld(
+        features     = ['c', 'cprogram'],
+        source       = [
+            'src/zerogw.c',
+            'src/buffer.c',
+            'src/roundrobin.c',
+            ],
+        target       = 'jarred-zgw',
+        includes     = ['src'],
+        cflags       = ['-std=c99', '-Wall'],
+        lib          = ['rrd', 'zmq'],
+        )
 
 def dist(ctx):
     ctx.excl = [
