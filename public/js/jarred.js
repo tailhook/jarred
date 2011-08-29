@@ -1,18 +1,31 @@
 jQuery(function($) {
+    var tree = {};
+    var tm = Math.round((new Date()).getTime()/1000);
+    var plot;
     $.ajax({
         'url': '/rrd/',
         'dataType': 'json',
-        'success': buildtree,
-        })
-    var tm = Math.round((new Date()).getTime()/1000);
+        'success': buildtree
+        });
     $.ajax({
         'url': '/rrd/main.gafol.net/ping/ping-rock.insollo.com.rrd?start='+(tm-86400)+'&end='+tm+'&step=60&cf=AVERAGE',
         'dataType': 'json',
-        'success': buildgraph,
-        })
-    $("#tooltip").hide();
+        'success': buildgraph
+        });
 
-    var tree = {};
+    $("#tooltip").hide();
+    $("#graph").bind('plothover', function (event, pos, item) {
+        if(item) {
+            var dt = new Date();
+            dt.setTime(item.datapoint[0]*1000);
+            $("#tooltip").text(item.datapoint[1] + ' at ' + dt)
+                .css({'left': item.pageX + 5, 'top': item.pageY + 5 })
+                .show();
+        } else {
+            $("#tooltip").hide();
+        }
+    });
+
 
     function buildtree(json) {
         for(var i in json) {
@@ -38,8 +51,20 @@ jQuery(function($) {
             if(!ttype) ttype = tpinst[type] = {};
             var ttinst = ttype[tinst];
             if(!ttinst) ttinst = ttype[tinst] = json[i];
+            $("#allgraphs").append($('<a href="javascript:void(0);">')
+                .click(function () {
+                    loadgraph($(this).data('path'));
+                }).data('path', i).text(i)).append(' ');
         }
         console.log(tree);
+    }
+
+    function loadgraph(path) {
+        $.ajax({
+            'url': '/rrd'+path+'?start='+(tm-86400)+'&end='+tm+'&step=60&cf=AVERAGE',
+            'dataType': 'json',
+            'success': buildgraph
+            });
     }
 
     function buildgraph(json) {
@@ -49,20 +74,15 @@ jQuery(function($) {
             val.push.apply(val, json.data[i]);
             data.push(val);
         }
-        $.plot($("#graph"), [data], {
-            'grid': { 'hoverable': true },
-            'xaxis': { 'mode': 'time' }
-        })
-        $("#graph").bind('plothover', function (event, pos, item) {
-            if(item) {
-                var dt = new Date();
-                dt.setTime(item.datapoint[0]*1000);
-                $("#tooltip").text(item.datapoint[1] + ' at ' + dt)
-                    .css({'left': item.pageX + 5, 'top': item.pageY + 5 })
-                    .show();
-            } else {
-                $("#tooltip").hide();
-            }
-        });
+        if(!plot) {
+            plot = $.plot($("#graph"), [], {
+                'grid': { 'hoverable': true },
+                'xaxis': { 'mode': 'time' }
+            });
+        } else {
+            plot.setData([ data ]);
+            plot.setupGrid();
+            plot.draw();
+        }
     }
 })
