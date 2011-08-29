@@ -1,0 +1,12 @@
+.graph {
+    width: 800px;
+    height: 240px;
+}
+#tooltip {
+    position: absolute;
+    border: solid #fdd 2px;
+    background-color: #fee;
+    opacity: 0.8;
+    padding: 4px;
+    font-family: sans-serif;
+}
