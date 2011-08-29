@@ -98,9 +98,9 @@ void format_data(buffer_t *buf, char *filename, char *cf,
         &nds, &dnames, &data));
     STDASSERT(buffer_printf(buf, "{\n"));
     STDASSERT(buffer_printf(buf, "\"consolidation_function\": \"%s\",\n", cf));
-    STDASSERT(buffer_printf(buf, "\"start\": \"%lu\",\n", start));
-    STDASSERT(buffer_printf(buf, "\"end\": \"%lu\",\n", end));
-    STDASSERT(buffer_printf(buf, "\"step\": \"%lu\",\n", step));
+    STDASSERT(buffer_printf(buf, "\"start\": %lu,\n", start));
+    STDASSERT(buffer_printf(buf, "\"end\": %lu,\n", end));
+    STDASSERT(buffer_printf(buf, "\"step\": %lu,\n", step));
     STDASSERT(buffer_printf(buf, "\"datasets\": [\n"));
     for(int i = 0; i < nds; ++i) {
         STDASSERT(buffer_printf(buf, "\"%s\"", dnames[i]));
