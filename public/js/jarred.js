@@ -1,16 +1,13 @@
 jQuery(function($) {
     var tree = {};
+    var flatdict = {};
+    var jstree = {};
     var tm = Math.round((new Date()).getTime()/1000);
     var plot;
     $.ajax({
         'url': '/rrd/',
         'dataType': 'json',
         'success': buildtree
-        });
-    $.ajax({
-        'url': '/rrd/main.gafol.net/ping/ping-rock.insollo.com.rrd?start='+(tm-86400)+'&end='+tm+'&step=60&cf=AVERAGE',
-        'dataType': 'json',
-        'success': buildgraph
         });
 
     $("#tooltip").hide();
@@ -26,21 +23,36 @@ jQuery(function($) {
         }
     });
 
+    function _mktree(name, obj, lev) {
+        if(lev > 4) return {
+            "data": name,
+            "attr": { "rrd": obj.rrd }
+            };
+        var children = [];
+        for(var i in obj) {
+            children.push(_mktree(i, obj[i], lev+1));
+        }
+        return {
+            "data": name,
+            "children": children
+            }
+    }
 
     function buildtree(json) {
+        flatdict = json;
         for(var i in json) {
-            var parts = i.split('/');
+            var path = i.split('.');
+            path.splice(path.length-1, 1);
+            path = path.join('.');
+            var parts = path.split('/');
             console.assert(!parts[0]);
             host = parts[1];
             plug_inst = parts[2].split('-');
             plug = plug_inst.splice(0, 1)[0];
-            pinst = plug_inst.join('-');
+            pinst = plug_inst.join('-') || 'default';
             type_inst = parts[3].split('-');
             type = type_inst.splice(0, 1)[0];
-            tinst = type_inst.join('-');
-            tinst = tinst.split('.');
-            tinst.splice(tinst.length-1, 1);
-            tinst = tinst.join('.');
+            tinst = type_inst.join('-') || 'default';
             var thost = tree[host];
             if(!thost) thost = tree[host] = {};
             var tplug = thost[plug];
@@ -51,12 +63,22 @@ jQuery(function($) {
             if(!ttype) ttype = tpinst[type] = {};
             var ttinst = ttype[tinst];
             if(!ttinst) ttinst = ttype[tinst] = json[i];
-            $("#allgraphs").append($('<a href="javascript:void(0);">')
-                .click(function () {
-                    loadgraph($(this).data('path'));
-                }).data('path', i).text(i)).append(' ');
+            json[i].rrd = i;
         }
-        console.log(tree);
+        jstree = _mktree('root', tree, 0);
+        $("#menu").jstree({
+            "json_data": {
+                "data": jstree.children
+                },
+            "plugins": ["themes", "json_data", "ui"],
+            "themes": {"theme": "default", "url": "/css/jstree/default/style.css"}
+        }).bind('loaded.jstree', function() {
+            $("#menu li > a").click(function () {
+                var path = $(this).parent().attr('rrd');
+                if(!path) return;
+                loadgraph(path);
+            });
+        });
     }
 
     function loadgraph(path) {

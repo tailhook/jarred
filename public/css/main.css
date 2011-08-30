@@ -1,5 +1,5 @@
 .graph {
-    width: 800px;
+    width: 720px;
     height: 240px;
 }
 #tooltip {
@@ -9,4 +9,14 @@
     opacity: 0.8;
     padding: 4px;
     font-family: sans-serif;
+}
+#menu {
+    position: absolute;
+    left: 8px;
+    top: 8px;
+    width: 256px;
+}
+#content {
+    position: relative;
+    left: 272px;
 }

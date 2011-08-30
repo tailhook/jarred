@@ -36,10 +36,18 @@ static void add_info(buffer_t *buf, char *filename) {
             rrd.ds_def[i].dst));
         STDASSERT(buffer_printf(buf, "\"last_ds\": \"%s\",\n",
             rrd.pdp_prep[i].last_ds));
-        STDASSERT(buffer_printf(buf, "\"value\": %f,\n",
-            rrd.pdp_prep[i].scratch[PDP_val].u_val));
-        STDASSERT(buffer_printf(buf, "\"unknown_sec\": %f\n",
-            rrd.pdp_prep[i].scratch[PDP_unkn_sec_cnt].u_cnt));
+        if(isfinite(rrd.pdp_prep[i].scratch[PDP_val].u_val)) {
+            STDASSERT(buffer_printf(buf, "\"value\": %f,\n",
+                rrd.pdp_prep[i].scratch[PDP_val].u_val));
+        } else {
+            STDASSERT(buffer_printf(buf, "\"value\": null,\n"));
+        }
+        if(isfinite(rrd.pdp_prep[i].scratch[PDP_unkn_sec_cnt].u_cnt)) {
+            STDASSERT(buffer_printf(buf, "\"unknown_sec\": %f\n",
+                rrd.pdp_prep[i].scratch[PDP_unkn_sec_cnt].u_cnt));
+        } else {
+            STDASSERT(buffer_printf(buf, "\"unknown_sec\": null\n"));
+        }
         if(i < rrd.stat_head->ds_cnt-1) {
             STDASSERT(buffer_printf(buf, "},\n"));
         } else {
@@ -112,7 +120,7 @@ void format_data(buffer_t *buf, char *filename, char *cf,
     }
     STDASSERT(buffer_printf(buf, "],\n"));
     STDASSERT(buffer_printf(buf, "\"data\": [\n"));
-    int rows = (end - start) / step + 1;
+    int rows = (end - start) / step;
     for(int j = 0; j < rows; ++j) {
         STDASSERT(buffer_printf(buf, "["));
         for(int i = 0; i < nds; ++i) {
