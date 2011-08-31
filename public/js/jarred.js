@@ -92,7 +92,7 @@ jQuery(function($) {
     function buildgraph(json) {
         var data = [];
         for(var i = 0; i < json.data.length; ++i) {
-            var val = [i*json.step + json.start];
+            var val = [(i*json.step + json.start)*1000];
             val.push.apply(val, json.data[i]);
             data.push(val);
         }
