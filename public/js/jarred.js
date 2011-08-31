@@ -91,15 +91,15 @@ jQuery(function($) {
 
     function buildgraph(json) {
         var data = [];
-        for(var j = 0; j < json.data[0].length; ++j) {
-            data.push([]);
+        for(var j = 0; j < json.datasets.length; ++j) {
+            data.push({"label": json.datasets[j], "data": []});
         }
         for(var i = 0; i < json.data.length; ++i) {
             var row = json.data[i];
             var tm = (i*json.step + json.start)*1000;
             for(var j = 0; j < row.length; ++j) {
                 var val = [tm, row[j]];
-                data[j].push(val)
+                data[j].data.push(val)
             }
         }
         if(!plot) {
