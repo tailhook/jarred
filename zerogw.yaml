@@ -24,9 +24,11 @@ Routing:
           - "/js/*"
           - "/css/*"
           - "/index.html"
+          - "/"
           static:
             enabled: yes
             root: ./public
+            index-file: index.html
             restrict-root: no  # sorry can't for relative path
             deny-suffixes:
             - .swp  # vim backup file
