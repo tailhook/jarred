@@ -19,4 +19,5 @@
 #content {
     position: relative;
     left: 272px;
+    display: inline-block;
 }
