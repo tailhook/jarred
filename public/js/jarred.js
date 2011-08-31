@@ -91,18 +91,24 @@ jQuery(function($) {
 
     function buildgraph(json) {
         var data = [];
+        for(var j = 0; j < json.data[0].length; ++j) {
+            data.push([]);
+        }
         for(var i = 0; i < json.data.length; ++i) {
-            var val = [(i*json.step + json.start)*1000];
-            val.push.apply(val, json.data[i]);
-            data.push(val);
+            var row = json.data[i];
+            var tm = (i*json.step + json.start)*1000;
+            for(var j = 0; j < row.length; ++j) {
+                var val = [tm, row[j]];
+                data[j].push(val)
+            }
         }
         if(!plot) {
-            plot = $.plot($("#graph"), [], {
+            plot = $.plot($("#graph"), data, {
                 'grid': { 'hoverable': true },
                 'xaxis': { 'mode': 'time' }
             });
         } else {
-            plot.setData([ data ]);
+            plot.setData(data);
             plot.setupGrid();
             plot.draw();
         }
