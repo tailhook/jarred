@@ -23,19 +23,42 @@ jQuery(function($) {
         }
     });
 
-    function _mktree(name, obj, lev) {
-        if(lev > 4) return {
+    function _mktree(name, obj, stack) {
+        if(stack.length > 4) return {
             "data": name,
-            "attr": { "rrd": obj.rrd }
+            "metadata": { "leaf": obj }
             };
         var children = [];
         for(var i in obj) {
-            children.push(_mktree(i, obj[i], lev+1));
+            children.push(_mktree(i, obj[i], stack.concat([i])));
         }
-        return {
+        res =  {
             "data": name,
             "children": children
             }
+        var rlen = jarred_rules.length;
+        for(var i = 0; i < rlen; ++i) {
+            var rule = jarred_rules[i];
+            var m = jarred_rules[i].match;
+            var mlen = m.length;
+            if(stack.length != mlen) continue;
+            var matched = true;
+            for(var j = 0; j < mlen; ++j) {
+                if(m[j] != null && m[j] != stack[j]) {
+                    matched = false;
+                    break;
+                }
+            }
+            if(matched) {
+                res.children.push({
+                    "data": rule.label,
+                    "metadata": {
+                        "rule": rule,
+                        "stack": stack }
+                    });
+            }
+        }
+        return res;
     }
 
     function buildtree(json) {
@@ -65,28 +88,112 @@ jQuery(function($) {
             if(!ttinst) ttinst = ttype[tinst] = json[i];
             json[i].rrd = i;
         }
-        jstree = _mktree('root', tree, 0);
+        jstree = _mktree('root', tree, []);
         $("#menu").jstree({
             "json_data": {
                 "data": jstree.children
                 },
             "plugins": ["themes", "json_data", "ui"],
-            "themes": {"theme": "default", "url": "/css/jstree/default/style.css"}
+            "themes": {"theme": "default",
+                       "url": "/css/jstree/default/style.css"}
         }).bind('loaded.jstree', function() {
             $("#menu li > a").click(function () {
-                var path = $(this).parent().attr('rrd');
-                if(!path) return;
-                loadgraph(path);
+                var data = $(this).parent().data();
+                if(data.leaf) {
+                    loadgraph(data.leaf.rrd);
+                    return;
+                }
+                if(data.rule) {
+                    loadrule(data);
+                    return;
+                }
             });
         });
     }
 
     function loadgraph(path) {
         $.ajax({
-            'url': '/rrd'+path+'?start='+(tm-86400)+'&end='+tm+'&step=60&cf=AVERAGE',
+            'url': '/rrd'+path
+                + '?start='+(tm-86400)+'&end='+tm+'&step=60&cf=AVERAGE',
             'dataType': 'json',
             'success': buildgraph
             });
+    }
+
+    function fnmatch_compile(pat) {
+        res = ''
+        for(var i = 0, n = pat.length; i < n;) {
+            c = pat.charAt(i)
+            i += 1
+            switch(c) {
+            case '*':
+                res = res + '.*';
+                break;
+            case '?':
+                res = res + '.';
+                break;
+            case '[':
+                j = i
+                if(j < n && pat.charAt(j) == '!')
+                    j = j+1
+                if(j < n && pat.charAt(j) == ']')
+                    j = j+1
+                while(j < n && pat.charAt(j) != ']')
+                    j = j+1
+                if(j >= n)
+                    res = res + '\\['
+                else {
+                    stuff = pat.substr(i, j-i).replace('\\','\\\\')
+                    i = j+1
+                    if(stuff[0] == '!')
+                        stuff = '^' + stuff.substr(1)
+                    else if(stuff[0] == '^')
+                        stuff = '\\' + stuff
+                    res = res + '[' + stuff + ']'
+                }
+                break;
+            default:
+                // TODO(tailhook) escape more specials
+                res = res + c.replace('.', '\\.');
+                break;
+            }
+        }
+        return res
+    }
+
+    function loadrule(rule) {
+        var subtree = tree;
+        for(var i = 0; i < rule.stack.length; ++i) {
+            subtree = subtree[rule.stack[i]];
+        }
+        var filtered = []
+        var re = new RegExp(fnmatch_compile(rule.rule.fetch));
+        function visit(tree) {
+            if(tree.rrd) {
+                if(re.exec(tree.rrd)) {
+                    filtered.push(tree);
+                }
+                return;
+            }
+            for(var i in tree) {
+                visit(tree[i]);
+            }
+        }
+        visit(subtree);
+        var data = [];
+        for(var i = 0; i < filtered.length; ++i) {
+            $.ajax({
+                'url': '/rrd' + filtered[i].rrd
+                    + '?start='+(tm-86400)+'&end='+tm+'&step=60&cf=AVERAGE',
+                'dataType': 'json',
+                'success': function(json) {
+                    data.push(json);
+                    if(data.length < filtered.length) return;
+                    var gdata = rule.rule.convert.apply(this, data);
+                    drawgraph(gdata);
+                }
+            });
+        }
     }
 
     function buildgraph(json) {
@@ -102,6 +209,9 @@ jQuery(function($) {
                 data[j].data.push(val)
             }
         }
+        drawgraph(data);
+    }
+    function drawgraph(data) {
         if(!plot) {
             plot = $.plot($("#graph"), data, {
                 'grid': { 'hoverable': true },
