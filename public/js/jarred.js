@@ -3,7 +3,6 @@ jQuery(function($) {
     var flatdict = {};
     var jstree = {};
     var tm = Math.round((new Date()).getTime()/1000);
-    var plot;
     var selected = [];
     $.ajax({
         'url': '/rrd/',
@@ -12,17 +11,6 @@ jQuery(function($) {
         });
 
     $("#tooltip").hide();
-    $("#graph").bind('plothover', function (event, pos, item) {
-        if(item) {
-            var dt = new Date();
-            dt.setTime(item.datapoint[0]*1000);
-            $("#tooltip").text(item.datapoint[1] + ' at ' + dt)
-                .css({'left': item.pageX + 5, 'top': item.pageY + 5 })
-                .show();
-        } else {
-            $("#tooltip").hide();
-        }
-    });
     $("#period").change(rebuildgraph);
     function setperiod(ev) {
         $("#period")[0].selectedIndex = parseInt(ev.data) - 1;
@@ -31,6 +19,13 @@ jQuery(function($) {
     for(var i = 1, n = $('option', $("#period")).length+1; i < n; ++i) {
         $(window).keydown(i.toString(), setperiod);
     }
+    $("#mode").change(rebuildgraph);
+    $(window).keydown('m', function setperiod(ev) {
+        var sel = $("#mode")[0];
+        sel.selectedIndex = (sel.selectedIndex + 1) %
+            $("option", $("#mode")).length;
+        rebuildgraph();
+    });
 
     function _mktree(name, obj, stack) {
         if(stack.length > 4) return {
@@ -108,6 +103,9 @@ jQuery(function($) {
         }).bind("select_node.jstree", function (event, data) {
             selected = data.inst.get_selected();
             rebuildgraph();
+        }).bind("deselect_node.jstree", function (event, data) {
+            selected = data.inst.get_selected();
+            rebuildgraph();
         });
     }
 
@@ -170,7 +168,7 @@ jQuery(function($) {
                             gdata.push.apply(gdata, ar);
                         }
                     }
-                    drawgraph(gdata);
+                    drawgraphs(gdata);
                 }
             });
         }
@@ -254,16 +252,42 @@ jQuery(function($) {
         }
         return data;
     }
-    function drawgraph(data) {
-        if(!plot) {
-            plot = $.plot($("#graph"), data, {
-                'grid': { 'hoverable': true },
-                'xaxis': { 'mode': 'time' }
-            });
-        } else {
-            plot.setData(data);
-            plot.setupGrid();
-            plot.draw();
+    function _drawgraph(data) {
+        var g = $('<div class="graph">');
+        $("#graph").append(g);
+        $.plot(g, data, {
+            'grid': { 'hoverable': true },
+            'xaxis': { 'mode': 'time' }
+        });
+        g.bind('plothover', function (event, pos, item) {
+            if(item) {
+                var dt = new Date();
+                dt.setTime(item.datapoint[0]*1000);
+                $("#tooltip").text(item.datapoint[1] + ' at ' + dt)
+                    .css({'left': item.pageX + 5, 'top': item.pageY + 5 })
+                    .show();
+            } else {
+                $("#tooltip").hide();
+            }
+        });
+    }
+    function drawgraphs(data) {
+        var $g = $("#graph").empty()
+        switch($("#mode").val()) {
+            case "normal":
+                _drawgraph(data);
+                break;
+            case "multi-axes":
+                for(var i = 0; i < data.length; ++i) {
+                    data[i].yaxis = i+1;
+                }
+                _drawgraph(data);
+                break;
+            case "multi-graph":
+                for(var i = 0; i < data.length; ++i) {
+                    _drawgraph([data[i]]);
+                }
+                break;
         }
     }
 
