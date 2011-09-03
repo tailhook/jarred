@@ -89,35 +89,78 @@ jQuery(function($) {
             json[i].rrd = i;
         }
         jstree = _mktree('root', tree, []);
-        $("#menu").jstree({
+        var domtree = $("#menu").jstree({
             "json_data": {
                 "data": jstree.children
                 },
-            "plugins": ["themes", "json_data", "ui"],
+            "plugins": ["themes", "json_data", "ui", "hotkeys"],
             "themes": {"theme": "default",
                        "url": "/css/jstree/default/style.css"}
-        }).bind('loaded.jstree', function() {
-            $("#menu li > a").click(function () {
-                var data = $(this).parent().data();
+        }).bind("select_node.jstree", function (event, data) {
+            // `data.rslt.obj` is the jquery extended node that was clicked
+            var files = {};
+            var collections = [];
+            $.each(data.inst.get_selected(), function (k, v) {
+                var data = $(v).data();
                 if(data.leaf) {
-                    loadgraph(data.leaf.rrd);
-                    return;
-                }
-                if(data.rule) {
-                    loadrule(data);
-                    return;
+                    if(!files[data.leaf.rrd]) {
+                        files[data.leaf.rrd] = [];
+                    }
+                    var coll = {
+                        "callback": convertgraph,
+                        "data": []
+                        };
+                    files[data.leaf.rrd].push(coll);
+                    collections.push(coll);
+                } else if(data.rule) {
+                    var rrds = rulefiles(data);
+                    var coll = {
+                        "callback": data.rule.convert,
+                        "rule": data.rule,
+                        "data": []
+                        };
+                    for(var i = 0, n = rrds.length; i < n; ++i) {
+                        if(!files[rrds[i].rrd]) {
+                            files[rrds[i].rrd] = [];
+                        }
+                        files[rrds[i].rrd].push(coll);
+                    }
+                    collections.push(coll);
                 }
             });
-        });
-    }
+            var total = 0;
+            var loaded = 0;
+            console.log("Files", files, "collections", collections);
+            for(var i in files) {
+                ++ total;
+                $.ajax({
+                    'url': '/rrd' + i
+                        + '?start='+(tm-86400)+'&end='+tm+'&step=60&cf=AVERAGE',
+                    'dataType': 'json',
+                    'rrdpath': i,
+                    'success': function(json) {
+                        var ff = files[this.rrdpath];
+                        for(var i = 0, n = ff.length; i < n; ++i) {
+                            ff[i].data.push(json);
+                        }
+                        ++loaded;
+                        if(loaded < total) return;
 
-    function loadgraph(path) {
-        $.ajax({
-            'url': '/rrd'+path
-                + '?start='+(tm-86400)+'&end='+tm+'&step=60&cf=AVERAGE',
-            'dataType': 'json',
-            'success': buildgraph
-            });
+                        var gdata = [];
+                        for(var i = 0, n = collections.length; i < n; ++i) {
+                            var coll = collections[i];
+                            var ar = coll.callback.apply(
+                                coll.rule, coll.data);
+                            if(ar) {
+                                gdata.push.apply(gdata, ar);
+                            }
+                        }
+                        console.log("GDATA", gdata);
+                        drawgraph(gdata);
+                    }
+                });
+            }
+        });
     }
 
     function fnmatch_compile(pat) {
@@ -161,7 +204,7 @@ jQuery(function($) {
         return res
     }
 
-    function loadrule(rule) {
+    function rulefiles(rule) {
         var subtree = tree;
         for(var i = 0; i < rule.stack.length; ++i) {
             subtree = subtree[rule.stack[i]];
@@ -180,23 +223,26 @@ jQuery(function($) {
             }
         }
         visit(subtree);
-        var data = [];
-        for(var i = 0; i < filtered.length; ++i) {
-            $.ajax({
-                'url': '/rrd' + filtered[i].rrd
-                    + '?start='+(tm-86400)+'&end='+tm+'&step=60&cf=AVERAGE',
-                'dataType': 'json',
-                'success': function(json) {
-                    data.push(json);
-                    if(data.length < filtered.length) return;
-                    var gdata = rule.rule.convert.apply(this, data);
-                    drawgraph(gdata);
-                }
-            });
-        }
+        return filtered;
     }
 
-    function buildgraph(json) {
+        //var data = [];
+        //for(var i = 0; i < filtered.length; ++i) {
+            //$.ajax({
+                //'url': '/rrd' + filtered[i].rrd
+                    //+ '?start='+(tm-86400)+'&end='+tm+'&step=60&cf=AVERAGE',
+                //'dataType': 'json',
+                //'success': function(json) {
+                    //data.push(json);
+                    //if(data.length < filtered.length) return;
+                    //var gdata = rule.rule.convert.apply(this, data);
+                    //drawgraph(gdata);
+                //}
+            //});
+        //}
+    //}
+
+    function convertgraph(json) {
         var data = [];
         for(var j = 0; j < json.datasets.length; ++j) {
             data.push({"label": json.datasets[j], "data": []});
@@ -209,7 +255,7 @@ jQuery(function($) {
                 data[j].data.push(val)
             }
         }
-        drawgraph(data);
+        return data;
     }
     function drawgraph(data) {
         if(!plot) {

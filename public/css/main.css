@@ -11,10 +11,12 @@
     font-family: sans-serif;
 }
 #menu {
-    position: absolute;
+    position: fixed;
     left: 8px;
     top: 8px;
     width: 256px;
+    overflow-y: auto;
+    bottom: 8px;
 }
 #content {
     position: relative;
