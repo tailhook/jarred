@@ -383,7 +383,6 @@ jQuery(function($) {
                 break;
         }
         $("#graph .graph").bind('plotselected', function (event, ranges) {
-            console.log('ranges', ranges, event);
             if(ranges.xaxis) {
                 range.xmin = ranges.xaxis.from;
                 range.xmax = ranges.xaxis.to;
