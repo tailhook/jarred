@@ -2,3 +2,5 @@
 .lock-*
 .waf*
 *.tar.gz
+/public/js/rules_local.js
+/tmp
