@@ -24,6 +24,13 @@ jQuery(function($) {
         }
     });
     $("#period").change(rebuildgraph);
+    function setperiod(ev) {
+        $("#period")[0].selectedIndex = parseInt(ev.data) - 1;
+        rebuildgraph();
+    }
+    for(var i = 1, n = $('option', $("#period")).length+1; i < n; ++i) {
+        $(window).keydown(i.toString(), setperiod);
+    }
 
     function _mktree(name, obj, stack) {
         if(stack.length > 4) return {
@@ -271,8 +278,12 @@ jQuery(function($) {
                 var ts = (first.start + first.step * j) * 1000;
                 for(var i = 0; i < arguments.length; ++i) {
                     one = arguments[i].data[j][0];
-                    if(!isNaN(one) && one != null && one < 100)
-                        val += 100 - one;
+                    if(isNaN(one) || one == null) {
+                        // Better nothing than wrong value
+                        val = null;
+                        break;
+                    }
+                    val += 100 - one;
                 }
                 data.push([ts, val]);
             }
