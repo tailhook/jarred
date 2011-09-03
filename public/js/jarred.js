@@ -130,7 +130,6 @@ jQuery(function($) {
             });
             var total = 0;
             var loaded = 0;
-            console.log("Files", files, "collections", collections);
             for(var i in files) {
                 ++ total;
                 $.ajax({
@@ -155,7 +154,6 @@ jQuery(function($) {
                                 gdata.push.apply(gdata, ar);
                             }
                         }
-                        console.log("GDATA", gdata);
                         drawgraph(gdata);
                     }
                 });
@@ -225,22 +223,6 @@ jQuery(function($) {
         visit(subtree);
         return filtered;
     }
-
-        //var data = [];
-        //for(var i = 0; i < filtered.length; ++i) {
-            //$.ajax({
-                //'url': '/rrd' + filtered[i].rrd
-                    //+ '?start='+(tm-86400)+'&end='+tm+'&step=60&cf=AVERAGE',
-                //'dataType': 'json',
-                //'success': function(json) {
-                    //data.push(json);
-                    //if(data.length < filtered.length) return;
-                    //var gdata = rule.rule.convert.apply(this, data);
-                    //drawgraph(gdata);
-                //}
-            //});
-        //}
-    //}
 
     function convertgraph(json) {
         var data = [];
