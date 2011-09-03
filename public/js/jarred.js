@@ -270,24 +270,29 @@ jQuery(function($) {
     // Utility functions
 
     window.jarred = {
-        'sum': function sum() {
+        'sum': function sum(values, fun) {
             var data = [];
-            var first = arguments[0];
+            var start = 0;
+            var first = values[0];
             for(var j = 0; j < first.data.length; ++j) {
                 var val = 0;
                 var ts = (first.start + first.step * j) * 1000;
-                for(var i = 0; i < arguments.length; ++i) {
-                    one = arguments[i].data[j][0];
+                for(var i = 0; i < values.length; ++i) {
+                    one = values[i].data[j][0];
                     if(isNaN(one) || one == null) {
                         // Better nothing than wrong value
                         val = null;
                         break;
                     }
-                    val += 100 - one;
+                    if(fun) {
+                        val += fun(one);
+                    } else {
+                        val += one;
+                    }
                 }
                 data.push([ts, val]);
             }
             return [{"data": data}];
-        },
+        }
     };
 })
