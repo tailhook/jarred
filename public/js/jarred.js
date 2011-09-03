@@ -323,6 +323,24 @@ jQuery(function($) {
                             ngraph.data[j][1] += v;
                         }
                     }
+                    ngraph.label += '+'+data[i].label;
+                }
+                _drawgraph([ngraph]);
+                break;
+            case "diff":
+                var ngraph = data[0];
+                for(var i = 1; i < data.length; ++i) {
+                    var cur = data[i].data;
+                    for(var j = 0; j < cur.length; ++j) {
+                        var v = cur[j][1];
+                        console.assert(ngraph.data[j][0] == cur[j][0]);
+                        if(v == null || isNaN(v)) {
+                            ngraph.data[j][1] = null;
+                        } else {
+                            ngraph.data[j][1] -= v;
+                        }
+                    }
+                    ngraph.label += '-'+data[i].label;
                 }
                 _drawgraph([ngraph]);
                 break;
