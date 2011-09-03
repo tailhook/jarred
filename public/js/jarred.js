@@ -4,6 +4,7 @@ jQuery(function($) {
     var jstree = {};
     var tm = Math.round((new Date()).getTime()/1000);
     var plot;
+    var selected = [];
     $.ajax({
         'url': '/rrd/',
         'dataType': 'json',
@@ -22,6 +23,7 @@ jQuery(function($) {
             $("#tooltip").hide();
         }
     });
+    $("#period").change(rebuildgraph);
 
     function _mktree(name, obj, stack) {
         if(stack.length > 4) return {
@@ -89,7 +91,7 @@ jQuery(function($) {
             json[i].rrd = i;
         }
         jstree = _mktree('root', tree, []);
-        var domtree = $("#menu").jstree({
+        $("#menu").jstree({
             "json_data": {
                 "data": jstree.children
                 },
@@ -97,69 +99,75 @@ jQuery(function($) {
             "themes": {"theme": "default",
                        "url": "/css/jstree/default/style.css"}
         }).bind("select_node.jstree", function (event, data) {
-            // `data.rslt.obj` is the jquery extended node that was clicked
-            var files = {};
-            var collections = [];
-            $.each(data.inst.get_selected(), function (k, v) {
-                var data = $(v).data();
-                if(data.leaf) {
-                    if(!files[data.leaf.rrd]) {
-                        files[data.leaf.rrd] = [];
-                    }
-                    var coll = {
-                        "callback": convertgraph,
-                        "data": []
-                        };
-                    files[data.leaf.rrd].push(coll);
-                    collections.push(coll);
-                } else if(data.rule) {
-                    var rrds = rulefiles(data);
-                    var coll = {
-                        "callback": data.rule.convert,
-                        "rule": data.rule,
-                        "data": []
-                        };
-                    for(var i = 0, n = rrds.length; i < n; ++i) {
-                        if(!files[rrds[i].rrd]) {
-                            files[rrds[i].rrd] = [];
-                        }
-                        files[rrds[i].rrd].push(coll);
-                    }
-                    collections.push(coll);
-                }
-            });
-            var total = 0;
-            var loaded = 0;
-            for(var i in files) {
-                ++ total;
-                $.ajax({
-                    'url': '/rrd' + i
-                        + '?start='+(tm-86400)+'&end='+tm+'&step=60&cf=AVERAGE',
-                    'dataType': 'json',
-                    'rrdpath': i,
-                    'success': function(json) {
-                        var ff = files[this.rrdpath];
-                        for(var i = 0, n = ff.length; i < n; ++i) {
-                            ff[i].data.push(json);
-                        }
-                        ++loaded;
-                        if(loaded < total) return;
-
-                        var gdata = [];
-                        for(var i = 0, n = collections.length; i < n; ++i) {
-                            var coll = collections[i];
-                            var ar = coll.callback.apply(
-                                coll.rule, coll.data);
-                            if(ar) {
-                                gdata.push.apply(gdata, ar);
-                            }
-                        }
-                        drawgraph(gdata);
-                    }
-                });
-            }
+            selected = data.inst.get_selected();
+            rebuildgraph();
         });
     }
+
+    function rebuildgraph() {
+        var files = {};
+        var collections = [];
+        $.each(selected, function (k, v) {
+            var data = $(v).data();
+            if(data.leaf) {
+                if(!files[data.leaf.rrd]) {
+                    files[data.leaf.rrd] = [];
+                }
+                var coll = {
+                    "callback": convertgraph,
+                    "data": []
+                    };
+                files[data.leaf.rrd].push(coll);
+                collections.push(coll);
+            } else if(data.rule) {
+                var rrds = rulefiles(data);
+                var coll = {
+                    "callback": data.rule.convert,
+                    "rule": data.rule,
+                    "data": []
+                    };
+                for(var i = 0, n = rrds.length; i < n; ++i) {
+                    if(!files[rrds[i].rrd]) {
+                        files[rrds[i].rrd] = [];
+                    }
+                    files[rrds[i].rrd].push(coll);
+                }
+                collections.push(coll);
+            }
+        });
+        var total = 0;
+        var loaded = 0;
+        var period = $("#period").val();
+        for(var i in files) {
+            ++ total;
+            $.ajax({
+                'url': '/rrd' + i
+                    + '?start=' + (tm-period)
+                    + '&end=' + tm + '&step=60&cf=AVERAGE',
+                'dataType': 'json',
+                'rrdpath': i,
+                'success': function(json) {
+                    var ff = files[this.rrdpath];
+                    for(var i = 0, n = ff.length; i < n; ++i) {
+                        ff[i].data.push(json);
+                    }
+                    ++loaded;
+                    if(loaded < total) return;
+
+                    var gdata = [];
+                    for(var i = 0, n = collections.length; i < n; ++i) {
+                        var coll = collections[i];
+                        var ar = coll.callback.apply(
+                            coll.rule, coll.data);
+                        if(ar) {
+                            gdata.push.apply(gdata, ar);
+                        }
+                    }
+                    drawgraph(gdata);
+                }
+            });
+        }
+    };
 
     function fnmatch_compile(pat) {
         res = ''
@@ -251,4 +259,24 @@ jQuery(function($) {
             plot.draw();
         }
     }
+
+    // Utility functions
+
+    window.jarred = {
+        'sum': function sum() {
+            var data = [];
+            var first = arguments[0];
+            for(var j = 0; j < first.data.length; ++j) {
+                var val = 0;
+                var ts = (first.start + first.step * j) * 1000;
+                for(var i = 0; i < arguments.length; ++i) {
+                    one = arguments[i].data[j][0];
+                    if(!isNaN(one) && one != null && one < 100)
+                        val += 100 - one;
+                }
+                data.push([ts, val]);
+            }
+            return [{"data": data}];
+        },
+    };
 })
