@@ -252,13 +252,34 @@ jQuery(function($) {
         }
         return data;
     }
+
+    function suffix_formatter(val, axis) {
+        if (val > 1000000000)
+            return (val / 1000000000).toFixed(1) + " G";
+        else if (val > 1000000)
+            return (val / 1000000).toFixed(1) + " M";
+        else if (val > 1000)
+            return (val / 1000).toFixed(1) + " k";
+        else if (val > 10)
+            return val.toFixed(0);
+        else if (val > 2)
+            return val.toFixed(1);
+        else if (val > 0.1)
+            return val.toFixed(2);
+        else
+            return val.toFixed(3);
+    }
+
     function _drawgraph(data) {
         var g = $('<div class="graph">');
         $("#graph").append(g);
         $.plot(g, data, {
             'grid': { 'hoverable': true },
-            'xaxis': { 'mode': 'time' }
-        });
+            'xaxis': { 'mode': 'time' },
+            'yaxis': {
+                'tickFormatter': suffix_formatter,
+                }
+            });
         g.bind('plothover', function (event, pos, item) {
             if(item) {
                 var dt = new Date();
@@ -271,6 +292,7 @@ jQuery(function($) {
             }
         });
     }
+
     function drawgraphs(data) {
         var $g = $("#graph").empty()
         switch($("#mode").val()) {
@@ -287,6 +309,25 @@ jQuery(function($) {
                 for(var i = 0; i < data.length; ++i) {
                     _drawgraph([data[i]]);
                 }
+                break;
+            case "sum":
+                var ngraph = data[0];
+                for(var i = 1; i < data.length; ++i) {
+                    var cur = data[i].data;
+                    for(var j = 0; j < cur.length; ++j) {
+                        var v = cur[j][1];
+                        console.assert(ngraph.data[j][0] == cur[j][0]);
+                        if(v == null || isNaN(v)) {
+                            ngraph.data[j][1] = null;
+                        } else {
+                            ngraph.data[j][1] += v;
+                        }
+                    }
+                }
+                _drawgraph([ngraph]);
+                break;
+            default:
+                throw "Mode node implemented";
                 break;
         }
     }
