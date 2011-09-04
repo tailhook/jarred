@@ -315,7 +315,7 @@ jQuery(function($) {
         g.bind('plothover', function (event, pos, item) {
             if(item) {
                 var dt = new Date();
-                dt.setTime(item.datapoint[0]*1000);
+                dt.setTime(item.datapoint[0]);
                 $("#tooltip").text(suffix_formatter(item.datapoint[1])
                         + ' at ' + dt)
                     .css({'left': item.pageX + 5, 'top': item.pageY + 5 })
