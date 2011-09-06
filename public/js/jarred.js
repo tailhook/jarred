@@ -118,7 +118,7 @@ jQuery(function($) {
             }
         };
         jarred_presets(collection, tree);
-        console.log("COLLECTION", collection);
+        var menu = $('<ul class="contents">').appendTo($("#menu").empty());
         var canvas = $("#graph").empty();
         for(var i = 0, ni = collection.sections.length; i < ni; ++i) {
             var sec = collection.sections[i];
@@ -126,6 +126,10 @@ jQuery(function($) {
                 .attr('id', 'section_' + i)
                 .append($('<h2>').text(sec.title))
                 .appendTo(canvas);
+            $('<li>').append($("<a>")
+                .attr('href', '#section_'+ i)
+                .text(sec.title)
+                ).appendTo(menu);
             for(var j = 0, nj = sec.graphs.length; j < nj; ++j) {
                 var graf = sec.graphs[j];
                 $("<h3>").text(graf.title).appendTo(sdiv);
@@ -139,17 +143,36 @@ jQuery(function($) {
                         gbuilder.add_leaf(ds.node);
                     }
                 }
-                gbuilder.load((function(div, props) { return function(data) {
+                gbuilder.load((function(div, graf) { return function(data) {
                     for(var i = 0; i < data.length; ++i) {
-                        var p = props[i];
+                        var p = graf.datasets[i];
                         if(!p) break;
                         if(p.label) data[i].label = p.label;
                         if(p.yaxis) data[i].yaxis = p.yaxis;
+                        if(p.stack) data[i].stack = p.stack;
+                        if(p.lines) data[i].lines = p.lines;
+                        if(p.bars) data[i].bars = p.bars;
+                        if(p.points) data[i].points = p.points;
                     }
-                    _drawgraph(data, div)
-                }})(gdiv, graf.datasets));
+                    if(graf.yranges && graf.yranges.yminmax) {
+                        var ymax = graf.yranges.yminmax;
+                        for(var i = 0; i < data.length; ++i) {
+                            var ds = data[i];
+                            if(ds.yaxis == 1) {
+                                for(var j = 0, jn = ds.data.length; j<jn; ++j){
+                                    var v = ds.data[j][1];
+                                    if(v > ymax) ymax = v;
+                                }
+                            }
+                        }
+                        graf.yranges.ymax = ymax;
+                    }
+                    _drawgraph(data, div, graf.yranges)
+                }})(gdiv, graf));
             }
         }
+        $("#graph div.graph").bind('plotselected', function(event, ranges) {
+        });
     }
 
     function buildanddraw(json) {
@@ -223,7 +246,6 @@ jQuery(function($) {
                 var total = 0;
                 var loaded = 0;
                 var period = $("#period").val();
-                console.log("LOADING ", files);
                 for(var i in files) {
                     ++ total;
                     $.ajax({
@@ -300,7 +322,6 @@ jQuery(function($) {
 
     function rulefiles(rule) {
         var subtree = rule.node;
-        console.log("RULE", rule);
         if(!subtree) {
             subtree = tree;
             for(var i = 0; i < rule.stack.length; ++i) {
@@ -357,11 +378,12 @@ jQuery(function($) {
             return val.toFixed(3);
     }
 
-    function _drawgraph(data, div, mode) {
+    function _drawgraph(data, div, yrange) {
         if(!div) {
             div = $('<div class="graph">');
             $("#graph").append(div);
         }
+        if(!yrange) yrange = range;
         $.plot(div, data, {
             'grid': { "hoverable": true },
             'crosshair': { "mode": $("#selmode").val() },
@@ -373,20 +395,20 @@ jQuery(function($) {
                 },
             'yaxes': [{
                 'tickFormatter': suffix_formatter,
-                "min": range.ymin,
-                "max": range.ymax,
+                "min": yrange.ymin,
+                "max": yrange.ymax,
                 }, {
                 'tickFormatter': suffix_formatter,
-                "min": range.y2min,
-                "max": range.y2max,
+                "min": yrange.y2min,
+                "max": yrange.y2max,
                 }, {
                 'tickFormatter': suffix_formatter,
-                "min": range.y3min,
-                "max": range.y3max,
+                "min": yrange.y3min,
+                "max": yrange.y3max,
                 }, {
                 'tickFormatter': suffix_formatter,
-                "min": range.y4min,
-                "max": range.y4max,
+                "min": yrange.y4min,
+                "max": yrange.y4max,
                 }]
             });
         div.bind('plothover', function (event, pos, item) {
@@ -459,7 +481,7 @@ jQuery(function($) {
                 throw "Mode node implemented";
                 break;
         }
-        $("#graph .graph").bind('plotselected', function (event, ranges) {
+        $("#graph div.graph").bind('plotselected', function (event, ranges) {
             if(ranges.xaxis) {
                 range.xmin = ranges.xaxis.from;
                 range.xmax = ranges.xaxis.to;
