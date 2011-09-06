@@ -2,6 +2,15 @@
     width: 720px;
     height: 240px;
 }
+a, a:hover, a:visited {
+    text-decoration: none;
+}
+#menu a:hover:after {
+    content: " ‣‣";
+}
+ul {
+    list-style: none;
+}
 #tooltip {
     position: absolute;
     border: solid #fdd 2px;
@@ -35,3 +44,4 @@
 #toolbar li.current {
     background-color: lightblue;
 }
+
