@@ -5,7 +5,7 @@
 a, a:hover, a:visited {
     text-decoration: none;
 }
-#menu a:hover:after {
+ul.contents a:hover:after {
     content: " ‣‣";
 }
 ul {

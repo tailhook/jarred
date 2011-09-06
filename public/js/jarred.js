@@ -27,15 +27,20 @@ jQuery(function($) {
             $("option", $("#mode")).length;
         rebuildgraph();
     });
-    $("#selmode").change(rebuildgraph);
+    $("#selmode").change(redrawgraphs);
     $(window).keydown('s', function setperiod(ev) {
         var sel = $("#selmode")[0];
         sel.selectedIndex = (sel.selectedIndex + 1) %
             $("option", $("#selmode")).length;
-        drawgraphs(lastgraph);
+        redrawgraphs(); // TODO(tailhook) can just redraw
     });
-    $("#reset").click(function() { range = {}; drawgraphs(lastgraph); });
-    $(window).keydown('esc', function() { range = {}; drawgraphs(lastgraph);});
+    function resetgraphs() {
+        range = {};
+        $("#graph div.graph").data('ranges', null);
+        redrawgraphs();
+    }
+    $("#reset").click(resetgraphs);
+    $(window).keydown('esc', resetgraphs);
 
     function _mktree(name, obj, stack) {
         if(stack.length > 4) return {
@@ -154,24 +159,30 @@ jQuery(function($) {
                         if(p.bars) data[i].bars = p.bars;
                         if(p.points) data[i].points = p.points;
                     }
-                    if(graf.yranges && graf.yranges.yminmax) {
-                        var ymax = graf.yranges.yminmax;
-                        for(var i = 0; i < data.length; ++i) {
-                            var ds = data[i];
-                            if(ds.yaxis == 1) {
+                    if(graf.ranges) {
+                        for(var ax in graf.ranges) {
+                            var ymax = graf.ranges[ax].yminto;
+                            for(var i = 0; i < data.length; ++i) {
+                                var ds = data[i];
+                                if(ds.yaxis != 1) continue;
                                 for(var j = 0, jn = ds.data.length; j<jn; ++j){
                                     var v = ds.data[j][1];
                                     if(v > ymax) ymax = v;
                                 }
                             }
+                            graf.ranges[ax].to = ymax;
                         }
-                        graf.yranges.ymax = ymax;
                     }
                     _drawgraph(data, div, graf.yranges)
+                    div.bind('redraw', function () {
+                        var rng = $(this).data('ranges') || graf.yranges;
+                        _drawgraph(data, div, rng);
+                    });
                 }})(gdiv, graf));
             }
         }
         $("#graph div.graph").bind('plotselected', function(event, ranges) {
+            $(this).data('ranges', ranges).trigger('redraw');
         });
     }
 
@@ -208,6 +219,15 @@ jQuery(function($) {
             builder.load(drawgraphs);
         } else {
             buildpresets();  // TODO(tailhook) may be optimize a little
+        }
+    }
+
+    function redrawgraphs() {
+        range = {};
+        if($('body').hasClass('custom')) {
+            drawgraphs(lastgraph);
+        } else {
+            $("#graph div.graph").trigger('redraw');
         }
     }
 
@@ -378,38 +398,40 @@ jQuery(function($) {
             return val.toFixed(3);
     }
 
-    function _drawgraph(data, div, yrange) {
+    function _mkaxes(ranges, num) {
+        var rng = ranges.yaxis
+        var axes = [ {
+            'tickFormatter': suffix_formatter,
+            'min': rng && rng.from,
+            'max': rng && rng.to
+            } ];
+        for(var i = 2; i <= num; ++i) {
+            rng = ranges['y' + i + 'axis'];
+            axes.push({
+                'tickFormatter': suffix_formatter,
+                'min': rng && rng.from,
+                'max': rng && rng.to
+                });
+        }
+        return axes;
+    }
+
+    function _drawgraph(data, div, ranges) {
         if(!div) {
             div = $('<div class="graph">');
             $("#graph").append(div);
         }
-        if(!yrange) yrange = range;
+        if(!ranges) ranges = range;
         $.plot(div, data, {
             'grid': { "hoverable": true },
             'crosshair': { "mode": $("#selmode").val() },
             'selection': { "mode": $("#selmode").val() },
             'xaxis': {
                 "mode": "time",
-                "min": range.xmin,
-                "max": range.xmax,
+                "min": ranges.xaxis && ranges.xaxis.from,
+                "max": ranges.xaxis && ranges.xaxis.to,
                 },
-            'yaxes': [{
-                'tickFormatter': suffix_formatter,
-                "min": yrange.ymin,
-                "max": yrange.ymax,
-                }, {
-                'tickFormatter': suffix_formatter,
-                "min": yrange.y2min,
-                "max": yrange.y2max,
-                }, {
-                'tickFormatter': suffix_formatter,
-                "min": yrange.y3min,
-                "max": yrange.y3max,
-                }, {
-                'tickFormatter': suffix_formatter,
-                "min": yrange.y4min,
-                "max": yrange.y4max,
-                }]
+            'yaxes': _mkaxes(ranges, data.length)
             });
         div.bind('plothover', function (event, pos, item) {
             if(item) {
@@ -482,26 +504,7 @@ jQuery(function($) {
                 break;
         }
         $("#graph div.graph").bind('plotselected', function (event, ranges) {
-            if(ranges.xaxis) {
-                range.xmin = ranges.xaxis.from;
-                range.xmax = ranges.xaxis.to;
-            }
-            if(ranges.yaxis) {
-                range.ymin = ranges.yaxis.from;
-                range.ymax = ranges.yaxis.to;
-            }
-            if(ranges.y2axis) {
-                range.y2min = ranges.y2axis.from;
-                range.y2max = ranges.y2axis.to;
-            }
-            if(ranges.y3axis) {
-                range.y3min = ranges.y3axis.from;
-                range.y3max = ranges.y3axis.to;
-            }
-            if(ranges.y4axis) {
-                range.y4min = ranges.y4axis.from;
-                range.y4max = ranges.y4axis.to;
-            }
+            range = ranges;
             drawgraphs(data);
         });
     }
