@@ -1,0 +1,66 @@
+function jarred_presets(coll, tree) {
+    for(var host in tree) {
+        var hdata = tree[host];
+        coll.add_section(host);
+        var mdata = [];
+        if(hdata.memory) {
+            for(var name in hdata.memory.default.memory) {
+                mdata.push({
+                "label": "Memory " + name,
+                "yaxis": 2,
+                "stack": true,
+                "lines": { "show": true, "fill": true},
+                "node": hdata.memory.default.memory[name]
+                });
+            }
+        }
+        if(hdata.cpu) {
+            var ncpu = 0;
+            for(var i in hdata.cpu) {
+                if(!isNaN(i = parseInt(i)) && i+1 > ncpu)
+                    ncpu = i+1;
+            }
+            coll.add_graph({
+                "title": "CPU vs Memory",
+                "ranges": {'yaxis': { 'minto': 100 } },
+                }, mdata.concat([{
+                "node": hdata.cpu,
+                "fetch": "*/cpu-*/cpu-idle.rrd",
+                "yaxis": 1,
+                "ncpu": ncpu,
+                "convert": function () {
+                    var data = jarred.sum(arguments,
+                        function(val) { return Math.max(100 - val, 0); });
+                    data[0].label = "CPU (max "+(100*this.ncpu)+"%)";
+                    return data;
+                    }
+                }]));
+        }
+        if(hdata.nginx) {
+            coll.add_graph({
+                "title": "Nginx requests"
+                }, [{
+                "yaxis": 2,
+                "node": hdata.nginx.default.nginx_requests.default
+                }])
+        }
+        if(hdata.processes) {
+            for(var pname in hdata.processes) {
+                var proc = hdata.processes[pname];
+                if(pname == 'default') continue;
+                coll.add_graph({
+                    "title": pname + '(CPU)'
+                    }, [{
+                    "yaxis": 1,
+                    "node": proc.ps_cputime.default
+                    }]);
+                coll.add_graph({
+                    "title": pname + '(Memory)'
+                    }, [{
+                    "yaxis": 2,
+                    "node": proc.ps_rss.default
+                    }]);
+            }
+        }
+    }
+}
