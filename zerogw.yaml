@@ -24,6 +24,7 @@ Routing:
           - "/js/*"
           - "/css/*"
           - "/index.html"
+          - "/custom.html"
           - "/"
           static:
             enabled: yes

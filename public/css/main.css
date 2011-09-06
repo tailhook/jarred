@@ -23,3 +23,15 @@
     left: 272px;
     display: inline-block;
 }
+#toolbar {
+    position: absolute;
+    right: 8px;
+    top: 8px;
+}
+#toolbar li {
+    display: inline-block;
+    padding: 4px 8px 4px 8px;
+}
+#toolbar li.current {
+    background-color: lightblue;
+}

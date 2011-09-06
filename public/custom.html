@@ -11,13 +11,12 @@
         <script src="/js/jquery.flot.selection.js"></script>
         <script src="/js/rules.js"></script>
         <script src="/js/rules_local.js"></script>
-        <script src="/js/presets.js"></script>
         <script src="/js/jarred.js"></script>
     </head>
-    <body class="presets">
+    <body class="custom">
         <ul id="toolbar">
-            <li class="current"><a href="/index.html">Presets</a></li>
-            <li><a href="/custom.html">Custom</a></li>
+            <li><a href="/index.html">Presets</a></li>
+            <li class="current"><a href="/custom.html">Custom</a></li>
         </ul>
         <div id="content">
             <select id="period">
@@ -27,6 +26,19 @@
                 <option value="2678400">Month</option>
                 <option value="31622400">Year</option>
             </select>
+            <select id="mode">
+                <option value="normal">Normal</option>
+                <option value="multi-axes">Multiple Axes</option>
+                <option value="multi-graph">Multiple Graphs</option>
+                <option value="sum">Sum of Graphs</option>
+                <option value="diff">Difference of Graphs</option>
+            </select>
+            <select id="selmode">
+                <option value="xy">X,Y</option>
+                <option value="x">X</option>
+                <option value="y">Y</option>
+            </select>
+            <button id="reset">reset</button>
             <div id="graph">
             </div>
         </div>

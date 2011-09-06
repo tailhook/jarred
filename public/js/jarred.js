@@ -1,7 +1,6 @@
 jQuery(function($) {
     var tree = {};
     var flatdict = {};
-    var jstree = {};
     var tm = Math.round((new Date()).getTime()/1000);
     var selected = [];
     var lastgraph;
@@ -9,7 +8,7 @@ jQuery(function($) {
     $.ajax({
         'url': '/rrd/',
         'dataType': 'json',
-        'success': buildtree
+        'success': $('body').hasClass('custom') ? buildanddraw : buildpresets
         });
 
     $("#tooltip").hide();
@@ -103,7 +102,59 @@ jQuery(function($) {
             if(!ttinst) ttinst = ttype[tinst] = json[i];
             json[i].rrd = i;
         }
-        jstree = _mktree('root', tree, []);
+    }
+
+    function buildpresets(json) {
+        buildtree(json);
+        var collection = {
+            'sections': [],
+            'add_section': function add_section(title) {
+                this.cursection = { 'title': title, "graphs": [] };
+                this.sections.push(this.cursection);
+            },
+            'add_graph': function add_graph(info, datarules) {
+                info['datasets'] = datarules;
+                this.cursection.graphs.push(info);
+            }
+        };
+        jarred_presets(collection, tree);
+        console.log("COLLECTION", collection);
+        var canvas = $("#graph").empty();
+        for(var i = 0, ni = collection.sections.length; i < ni; ++i) {
+            var sec = collection.sections[i];
+            var sdiv = $("<div>")
+                .attr('id', 'section_' + i)
+                .append($('<h2>').text(sec.title))
+                .appendTo(canvas);
+            for(var j = 0, nj = sec.graphs.length; j < nj; ++j) {
+                var graf = sec.graphs[j];
+                $("<h3>").text(graf.title).appendTo(sdiv);
+                var gdiv = $("<div class='graph'>").appendTo(sdiv);
+                var gbuilder = graphbuilder();
+                for(var k = 0, nk = graf.datasets.length; k < nk; ++k) {
+                    var ds = graf.datasets[k];
+                    if(ds.fetch) {
+                        gbuilder.add_rule({'rule': ds, 'node': ds.node});
+                    } else {
+                        gbuilder.add_leaf(ds.node);
+                    }
+                }
+                gbuilder.load((function(div, props) { return function(data) {
+                    for(var i = 0; i < data.length; ++i) {
+                        var p = props[i];
+                        if(!p) break;
+                        if(p.label) data[i].label = p.label;
+                        if(p.yaxis) data[i].yaxis = p.yaxis;
+                    }
+                    _drawgraph(data, div)
+                }})(gdiv, graf.datasets));
+            }
+        }
+    }
+
+    function buildanddraw(json) {
+        buildtree(json);
+        var jstree = _mktree('root', tree, []);
         $("#menu").jstree({
             "json_data": {
                 "data": jstree.children
@@ -121,22 +172,39 @@ jQuery(function($) {
     }
 
     function rebuildgraph() {
+        range = {};
+        if($('body').hasClass('custom')) {
+            var builder = graphbuilder();
+            $.each(selected, function (k, v) {
+                var data = $(v).data();
+                if(data.leaf)
+                    builder.add_leaf(data.leaf)
+                else if(data.rule)
+                    builder.add_rule(data);
+            });
+            builder.load(drawgraphs);
+        } else {
+            buildpresets();  // TODO(tailhook) may be optimize a little
+        }
+    }
+
+    function graphbuilder() {
         var files = {};
         var collections = [];
-        range = {};
-        $.each(selected, function (k, v) {
-            var data = $(v).data();
-            if(data.leaf) {
-                if(!files[data.leaf.rrd]) {
-                    files[data.leaf.rrd] = [];
+
+        return {
+           "add_leaf": function (leaf) {
+                if(!files[leaf.rrd]) {
+                    files[leaf.rrd] = [];
                 }
                 var coll = {
                     "callback": convertgraph,
                     "data": []
                     };
-                files[data.leaf.rrd].push(coll);
+                files[leaf.rrd].push(coll);
                 collections.push(coll);
-            } else if(data.rule) {
+                },
+            "add_rule": function (data) {
                 var rrds = rulefiles(data);
                 var coll = {
                     "callback": data.rule.convert,
@@ -150,40 +218,43 @@ jQuery(function($) {
                     files[rrds[i].rrd].push(coll);
                 }
                 collections.push(coll);
-            }
-        });
-        var total = 0;
-        var loaded = 0;
-        var period = $("#period").val();
-        for(var i in files) {
-            ++ total;
-            $.ajax({
-                'url': '/rrd' + i
-                    + '?start=' + (tm-period)
-                    + '&end=' + tm + '&step=60&cf=AVERAGE',
-                'dataType': 'json',
-                'rrdpath': i,
-                'success': function(json) {
-                    var ff = files[this.rrdpath];
-                    for(var i = 0, n = ff.length; i < n; ++i) {
-                        ff[i].data.push(json);
-                    }
-                    ++loaded;
-                    if(loaded < total) return;
+                },
+            "load": function (callback) {
+                var total = 0;
+                var loaded = 0;
+                var period = $("#period").val();
+                console.log("LOADING ", files);
+                for(var i in files) {
+                    ++ total;
+                    $.ajax({
+                        'url': '/rrd' + i
+                            + '?start=' + (tm-period)
+                            + '&end=' + tm + '&step=60&cf=AVERAGE',
+                        'dataType': 'json',
+                        'rrdpath': i,
+                        'success': function(json) {
+                            var ff = files[this.rrdpath];
+                            for(var i = 0, n = ff.length; i < n; ++i) {
+                                ff[i].data.push(json);
+                            }
+                            ++loaded;
+                            if(loaded < total) return;
 
-                    var gdata = [];
-                    for(var i = 0, n = collections.length; i < n; ++i) {
-                        var coll = collections[i];
-                        var ar = coll.callback.apply(
-                            coll.rule, coll.data);
-                        if(ar) {
-                            gdata.push.apply(gdata, ar);
+                            var gdata = [];
+                            for(var i = 0, n = collections.length; i < n; ++i) {
+                                var coll = collections[i];
+                                var ar = coll.callback.apply(
+                                    coll.rule, coll.data);
+                                if(ar) {
+                                    gdata.push.apply(gdata, ar);
+                                }
+                            }
+                            callback(gdata);
                         }
-                    }
-                    drawgraphs(gdata);
+                    });
                 }
-            });
-        }
+            }
+        };
     };
 
     function fnmatch_compile(pat) {
@@ -228,9 +299,13 @@ jQuery(function($) {
     }
 
     function rulefiles(rule) {
-        var subtree = tree;
-        for(var i = 0; i < rule.stack.length; ++i) {
-            subtree = subtree[rule.stack[i]];
+        var subtree = rule.node;
+        console.log("RULE", rule);
+        if(!subtree) {
+            subtree = tree;
+            for(var i = 0; i < rule.stack.length; ++i) {
+                subtree = subtree[rule.stack[i]];
+            }
         }
         var filtered = []
         var re = new RegExp(fnmatch_compile(rule.rule.fetch));
@@ -282,10 +357,12 @@ jQuery(function($) {
             return val.toFixed(3);
     }
 
-    function _drawgraph(data) {
-        var g = $('<div class="graph">');
-        $("#graph").append(g);
-        $.plot(g, data, {
+    function _drawgraph(data, div, mode) {
+        if(!div) {
+            div = $('<div class="graph">');
+            $("#graph").append(div);
+        }
+        $.plot(div, data, {
             'grid': { "hoverable": true },
             'crosshair': { "mode": $("#selmode").val() },
             'selection': { "mode": $("#selmode").val() },
@@ -312,7 +389,7 @@ jQuery(function($) {
                 "max": range.y4max,
                 }]
             });
-        g.bind('plothover', function (event, pos, item) {
+        div.bind('plothover', function (event, pos, item) {
             if(item) {
                 var dt = new Date();
                 dt.setTime(item.datapoint[0]);
