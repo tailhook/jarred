@@ -161,7 +161,7 @@ jQuery(function($) {
                     }
                     if(graf.ranges) {
                         for(var ax in graf.ranges) {
-                            var ymax = graf.ranges[ax].yminto;
+                            var ymax = graf.ranges[ax].minto;
                             for(var i = 0; i < data.length; ++i) {
                                 var ds = data[i];
                                 if(ds.yaxis != 1) continue;
@@ -173,9 +173,9 @@ jQuery(function($) {
                             graf.ranges[ax].to = ymax;
                         }
                     }
-                    _drawgraph(data, div, graf.yranges)
+                    _drawgraph(data, div, graf.ranges)
                     div.bind('redraw', function () {
-                        var rng = $(this).data('ranges') || graf.yranges;
+                        var rng = $(this).data('ranges') || graf.ranges;
                         _drawgraph(data, div, rng);
                     });
                 }})(gdiv, graf));
@@ -271,7 +271,7 @@ jQuery(function($) {
                     $.ajax({
                         'url': '/rrd' + i
                             + '?start=' + (tm-period)
-                            + '&end=' + tm + '&step=60&cf=AVERAGE',
+                            + '&end=' + tm + '&step=1&cf=AVERAGE',
                         'dataType': 'json',
                         'rrdpath': i,
                         'success': function(json) {

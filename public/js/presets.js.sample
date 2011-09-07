@@ -49,15 +49,15 @@ function jarred_presets(coll, tree) {
                 var proc = hdata.processes[pname];
                 if(pname == 'default') continue;
                 coll.add_graph({
-                    "title": pname + '(CPU)'
+                    "title": pname + ' (CPU)'
                     }, [{
                     "yaxis": 1,
                     "node": proc.ps_cputime.default
                     }]);
                 coll.add_graph({
-                    "title": pname + '(Memory)'
+                    "title": pname + ' (Memory)'
                     }, [{
-                    "yaxis": 2,
+                    "yaxis": 1,
                     "node": proc.ps_rss.default
                     }]);
             }
