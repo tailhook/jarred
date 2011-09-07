@@ -36,6 +36,23 @@ function jarred_presets(coll, tree) {
                     }
                 }]));
         }
+        if(hdata.interface) {
+            for(var iname in hdata.interface) {
+                if(iname == "default") continue;  // TODO(tailhook) fix freebsd
+                var intr = hdata.interface[iname];
+                coll.add_graph({
+                    "title": iname,
+                }, [{
+                    "node": intr.if_octets.default,
+                    "yaxis": 1,
+                    "lines": { "fill": true }
+                    }, {
+                    "node": intr.if_packets.default,
+                    "yaxis": 2
+                    },
+                ]);
+            }
+        }
         if(hdata.nginx) {
             coll.add_graph({
                 "title": "Nginx requests"
