@@ -63,4 +63,40 @@ function jarred_presets(coll, tree) {
             }
         }
     }
+    coll.add_section('Roundtrips');
+    var tping = {};
+    var tdrop = {};
+    for(var host in tree) {
+        var hdata = tree[host];
+        if(hdata.ping) {
+            for(var k in hdata.ping.default.ping) {
+                if(!tping[k]) {
+                    tdrop[k] = [];
+                    tping[k] = [];
+                }
+                tping[k].push([host, hdata.ping.default.ping[k]]);
+                tdrop[k].push([host, hdata.ping.default.ping_droprate[k]]);
+            }
+        }
+    }
+    for(var n in tping) {
+        var gdata = [];
+        var p = tping[n];
+        var d = tdrop[n];
+        for(var i = 0, ni = p.length; i < ni; ++i) {
+            gdata.push({
+                "node": p[i][1],
+                "yaxis": 1,
+                "label": "Ping from " + p[i][0]
+                });
+            gdata.push({
+                "node": d[i][1],
+                "yaxis": 2,
+                "label": "Drop rate " + d[i][0]
+                });
+        }
+        coll.add_graph({
+            "title": n
+            }, gdata);
+    }
 }
