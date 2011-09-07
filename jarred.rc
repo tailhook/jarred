@@ -1,0 +1,38 @@
+#!/bin/bash
+
+. /etc/rc.conf
+. /etc/rc.d/functions
+[ -e /etc/conf.d/jarred ] && . /etc/conf.d/jarred
+
+jarred_rrddir=${jarred_rrddir:-/var/lib/collectd}
+
+PID=`pidof -o %PPID /usr/bin/jarred-zgw`
+case "$1" in
+  start)
+    stat_busy "Starting jarred"
+    [ -z "$PID" ] && su jarred --shell=/bin/sh -c "exec /usr/bin/jarred-zgw -c ipc:///var/run/jarred/socket -p /rrd -d ${jarred_rrddir} &"
+    if [ $? -gt 0 ]; then
+      stat_fail
+    else
+      add_daemon jarred
+      stat_done
+    fi
+    ;;
+  stop)
+    stat_busy "Stopping jarred"
+    [ ! -z "$PID" ]  && kill $PID &> /dev/null
+    if [ $? -gt 0 ]; then
+      stat_fail
+    else
+      rm_daemon jarred
+      stat_done
+    fi
+    ;;
+  restart)
+    $0 stop
+    $0 start
+    ;;
+  *)
+    echo "usage: $0 {start|stop|restart}"
+esac
+exit 0

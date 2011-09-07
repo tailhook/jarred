@@ -1,0 +1,34 @@
+routing: !Prefix ~
+routing-by: !Uri ~
+map:
+    "/rrd/*":
+      zmq-forward:
+        enabled: yes
+        timeout: 5
+        contents:
+        - !Uri
+        socket:
+        - !zmq.Bind ipc:///var/run/jarred/socket
+children:
+    - match:
+      - "/js/*"
+      - "/css/*"
+      - "/index.html"
+      - "/custom.html"
+      - "/"
+      static:
+        enabled: yes
+        root: /usr/share/jarred/public
+        index-file: index.html
+        restrict-root: no  # want to serve files from /etc/jarred
+                           # It's insecure if you give anybody
+                           # access to /usr/share/jarred/public
+        deny-suffixes:
+        - .swp  # vim backup file
+        - .swo  # vim backup file
+        - ~  # other editors bak file
+        - .bak  # editors and utils bak file
+        - "#"  # emacs backup file
+        - .orig  # git merging backup files
+        deny-prefixes:
+        - "."  # hidden files

@@ -53,7 +53,7 @@ def dist(ctx):
         'doc/_build/**',
         '.waf*', '*.tar.gz', '*.zip', 'build',
         '.git*', '.lock*', '**/*.pyc', '**/*.swp', '**/*~',
-        '.boss*',
+        'tmp/**', 'public/js/presets.js', 'public/js/rules_local.js',
         ]
     ctx.algo = 'tar.gz'
 
@@ -77,6 +77,7 @@ def build_package(bld):
         source=['PKGBUILD.tpl', distfile, 'wscript'],
         target='PKGBUILD')
     bld(rule='cp ${SRC} ${TGT}', source=distfile, target='.')
+    bld(rule='cp ${SRC} ${TGT}', source='jarred.install', target='.')
     bld.add_group()
     bld(rule='makepkg -f', source=distfile)
     bld.add_group()
