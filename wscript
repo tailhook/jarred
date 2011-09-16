@@ -22,7 +22,6 @@ def configure(conf):
     conf.load('compiler_c')
 
 def build(bld):
-    import coyaml.waf
     bld(
         features     = ['c', 'cprogram'],
         source       = [
