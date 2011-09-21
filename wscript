@@ -10,7 +10,7 @@ APPNAME='jarred'
 if os.path.exists('.git'):
     VERSION=subprocess.getoutput('git describe').lstrip('v').replace('-', '_')
 else:
-    VERSION='0.1'
+    VERSION='0.1.1'
 
 top = '.'
 out = 'build'
@@ -50,7 +50,7 @@ def build(bld):
 def dist(ctx):
     ctx.excl = [
         'doc/_build/**',
-        '.waf*', '*.tar.gz', '*.zip', 'build',
+        '.waf*', '*.tar.gz', '*.zip', 'build', '.boss*',
         '.git*', '.lock*', '**/*.pyc', '**/*.swp', '**/*~',
         'tmp/**', 'public/js/presets.js', 'public/js/rules_local.js',
         ]
