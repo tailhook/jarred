@@ -97,6 +97,25 @@ void traverse_tree(buffer_t *buf, char **dirs, int strip_ch) {
     STDASSERT(fts_close(fts));
 }
 
+void quickvisit_tree(buffer_t *buf, char **dirs, int strip_ch) {
+    FTS *fts = fts_open(dirs, FTS_LOGICAL, NULL);
+    assert(fts);
+    FTSENT *entry;
+    STDASSERT(buffer_printf(buf, "[\n"));
+    for(int i = 0;;) {
+        entry = fts_read(fts);
+        if(!entry) break;
+        if(entry->fts_info != FTS_F) continue;
+        if(i) {
+            buffer_printf(buf, ",\n");
+        }
+        STDASSERT(buffer_printf(buf, "\"%s\"", entry->fts_path+strip_ch));
+        ++i;
+    }
+    STDASSERT(buffer_printf(buf, "]\n"));
+    STDASSERT(fts_close(fts));
+}
+
 void format_data(buffer_t *buf, char *filename, char *cf,
     time_t start, time_t end, unsigned long step) {
     unsigned long nds=2;

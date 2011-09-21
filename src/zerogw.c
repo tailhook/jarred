@@ -46,7 +46,7 @@ void parse_and_execute(char *dir, char *url, int ulen, buffer_t *buf) {
         assert(url[0] == '/');
         strncat(fulldir, url, urlend - url - 1);
         char *dirs[] = {fulldir, NULL};
-        traverse_tree(buf, dirs, strlen(fulldir));
+        quickvisit_tree(buf, dirs, strlen(fulldir));
     } else {
         char *query = memchr(url, '?', urlend - url);
         if(!query) {
@@ -60,6 +60,11 @@ void parse_and_execute(char *dir, char *url, int ulen, buffer_t *buf) {
             fullpath[dirlen-1] = 0;
         }
         assert(url[0] == '/');
+        if(*(query-1) == '/') {
+            char *dirs[] = {fullpath, NULL};
+            traverse_tree(buf, dirs, strlen(fullpath));
+            return;
+        }
         strncat(fullpath, url, query - url);
         char cf[16] = "AVERAGE";
         char sbuf[16];

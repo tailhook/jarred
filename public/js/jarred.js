@@ -82,7 +82,8 @@ jQuery(function($) {
 
     function buildtree(json) {
         flatdict = json;
-        for(var i in json) {
+        for(var j = 0; j < json.length; ++j) {
+            var i = json[j];
             var path = i.split('.');
             path.splice(path.length-1, 1);
             path = path.join('.');
@@ -104,8 +105,11 @@ jQuery(function($) {
             var ttype = tpinst[type];
             if(!ttype) ttype = tpinst[type] = {};
             var ttinst = ttype[tinst];
-            if(!ttinst) ttinst = ttype[tinst] = json[i];
-            json[i].rrd = i;
+            if(!ttinst) {
+                ttinst = ttype[tinst] = {
+                    'rrd': i
+                    };
+            }
         }
     }
 

@@ -13,7 +13,9 @@ int main(int argc, char **argv) {
     STDASSERT(buffer_init(&buf, 4096));
 
     if(argc >= 2) {
-        if(!strcmp(argv[1], "index")) {
+        if(!strcmp(argv[1], "list")) {
+            quickvisit_tree(&buf, argv+2, 0);
+        } else if(!strcmp(argv[1], "index")) {
             traverse_tree(&buf, argv+2, 0);
         } else if(!strcmp(argv[1], "fetch")) {
             if(argc < 7) {
