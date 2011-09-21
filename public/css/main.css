@@ -19,6 +19,16 @@ ul {
     padding: 4px;
     font-family: sans-serif;
 }
+#loader {
+    font: normal 200% sans-serif;
+    position: fixed;
+    top: 4px;
+    left: 4px;
+    background-color: white;
+    padding: 6px;
+    color: gray;
+    opacity: 0.5;
+}
 #menu {
     position: fixed;
     left: 8px;

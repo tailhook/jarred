@@ -1,10 +1,12 @@
 jQuery(function($) {
     var tree = {};
     var flatdict = {};
+    var filelist = [];
     var tm = Math.round((new Date()).getTime()/1000);
     var selected = [];
     var lastgraph;
     var range = {};
+    var queue = [];
     $.ajax({
         'url': '/rrd/',
         'dataType': 'json',
@@ -41,6 +43,34 @@ jQuery(function($) {
     }
     $("#reset").click(resetgraphs);
     $(window).keydown('esc', resetgraphs);
+
+    setInterval(function () {
+        if(queue.length) {
+            var st = $(window).scrollTop();
+            var wh = $(window).height();
+            for(var i = 0, ni = queue.length; i < ni; ++i) {
+                var item = queue[i];
+                var div = item[1];
+                if(!div) continue;
+                var off = div.offset();
+                var h = div.height();
+                if(off.top+h > st && off.top < st + wh) {
+                    queue.splice(i, 1);
+                    break;
+                }
+            }
+            if(i >= ni) {
+                item = queue[0];
+                queue.splice(0, 1);
+            }
+            _drawgraph.apply(this, item);
+            if(!queue.length) {
+                $("#loader").hide();
+            } else {
+                $("#loader").text(queue.length).show();
+            }
+        }
+    }, 100);
 
     function _mktree(name, obj, stack) {
         if(stack.length > 4) return {
@@ -81,7 +111,7 @@ jQuery(function($) {
     }
 
     function buildtree(json) {
-        flatdict = json;
+        allfiles = json;
         for(var j = 0; j < json.length; ++j) {
             var i = json[j];
             var path = i.split('.');
@@ -110,10 +140,12 @@ jQuery(function($) {
                     'rrd': i
                     };
             }
+            flatdict[i] = ttinst;
         }
     }
 
     function buildpresets(json) {
+        queue = [];
         buildtree(json);
         var collection = {
             'sections': [],
@@ -177,10 +209,10 @@ jQuery(function($) {
                             graf.ranges[ax].to = ymax;
                         }
                     }
-                    _drawgraph(data, div, graf.ranges)
+                    queue.push([data, div, graf.ranges]);
                     div.bind('redraw', function () {
                         var rng = $(this).data('ranges') || graf.ranges;
-                        _drawgraph(data, div, rng);
+                        queue.push([data, div, rng]);
                     });
                 }})(gdiv, graf));
             }
@@ -191,6 +223,7 @@ jQuery(function($) {
     }
 
     function buildanddraw(json) {
+        queue = [];
         buildtree(json);
         var jstree = _mktree('root', tree, []);
         $("#menu").jstree({
@@ -210,6 +243,7 @@ jQuery(function($) {
     }
 
     function rebuildgraph() {
+        queue = [];
         range = {};
         if($('body').hasClass('custom')) {
             var builder = graphbuilder();
@@ -222,11 +256,12 @@ jQuery(function($) {
             });
             builder.load(drawgraphs);
         } else {
-            buildpresets();  // TODO(tailhook) may be optimize a little
+            buildpresets(allfiles);  // TODO(tailhook) may be optimize a little
         }
     }
 
     function redrawgraphs() {
+        queue = [];
         range = {};
         if($('body').hasClass('custom')) {
             drawgraphs(lastgraph);
@@ -270,12 +305,13 @@ jQuery(function($) {
                 var total = 0;
                 var loaded = 0;
                 var period = $("#period").val();
+                var step = Math.round(period / 720);
                 for(var i in files) {
                     ++ total;
                     $.ajax({
                         'url': '/rrd' + i
                             + '?start=' + (tm-period)
-                            + '&end=' + tm + '&step=1&cf=AVERAGE',
+                            + '&end=' + tm + '&step=' + step + '&cf=AVERAGE',
                         'dataType': 'json',
                         'rrdpath': i,
                         'success': function(json) {
@@ -421,10 +457,6 @@ jQuery(function($) {
     }
 
     function _drawgraph(data, div, ranges) {
-        if(!div) {
-            div = $('<div class="graph">');
-            $("#graph").append(div);
-        }
         if(!ranges) ranges = range;
         $.plot(div, data, {
             'grid': { "hoverable": true },
@@ -456,17 +488,23 @@ jQuery(function($) {
         var $g = $("#graph").empty()
         switch($("#mode").val()) {
             case "normal":
-                _drawgraph(data);
+                var div = $('<div class="graph">');
+                $("#graph").append(div);
+                queue.push([data, div]);
                 break;
             case "multi-axes":
                 for(var i = 0; i < data.length; ++i) {
                     data[i].yaxis = i+1;
                 }
-                _drawgraph(data);
+                var div = $('<div class="graph">');
+                $("#graph").append(div);
+                queue.push([data, div]);
                 break;
             case "multi-graph":
                 for(var i = 0; i < data.length; ++i) {
-                    _drawgraph([data[i]]);
+                    var div = $('<div class="graph">');
+                    $("#graph").append(div);
+                    queue.push([[data[i]], div]);
                 }
                 break;
             case "sum":
@@ -484,7 +522,9 @@ jQuery(function($) {
                     }
                     ngraph.label += '+'+data[i].label;
                 }
-                _drawgraph([ngraph]);
+                var div = $('<div class="graph">');
+                $("#graph").append(div);
+                queue.push([[ngraph], div]);
                 break;
             case "diff":
                 var ngraph = data[0];
@@ -501,7 +541,9 @@ jQuery(function($) {
                     }
                     ngraph.label += '-'+data[i].label;
                 }
-                _drawgraph([ngraph]);
+                var div = $('<div class="graph">');
+                $("#graph").append(div);
+                queue.push([[ngraph], div]);
                 break;
             default:
                 throw "Mode node implemented";
