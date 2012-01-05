@@ -22,9 +22,37 @@
         }
         info.data = data;
     }
+    function suffix_formatter(val, axis) {
+        if (val > 1000000000)
+            return (val / 1000000000).toFixed(1) + " G";
+        else if (val > 1000000)
+            return (val / 1000000).toFixed(1) + " M";
+        else if (val > 1000)
+            return (val / 1000).toFixed(1) + " k";
+        else if (val > 10)
+            return val.toFixed(0);
+        else if (val > 2)
+            return val.toFixed(1);
+        else if (val > 0.1)
+            return val.toFixed(2);
+        else
+            return val.toFixed(3);
+    }
     Graph.prototype.make_div = function() {
         this.drawn = false;
         this.div = $("<div class='graph'>").attr('id', this.id);
+        this.div.bind('plothover', function (event, pos, item) {
+            if(item) {
+                var dt = new Date();
+                dt.setTime(item.datapoint[0]);
+                $("#tooltip").text(suffix_formatter(item.datapoint[1])
+                        + ' at ' + dt)
+                    .css({'left': item.pageX + 5, 'top': item.pageY + 5 })
+                    .show();
+            } else {
+                $("#tooltip").hide();
+            }
+        });
         return this.div;
     }
     Graph.prototype.draw = function() {
