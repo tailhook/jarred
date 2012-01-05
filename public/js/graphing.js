@@ -72,14 +72,21 @@
                 $("#tooltip").hide();
             }
         }).bind('plotselected', function(event, ranges) {
-            self.yranges = ranges;
+            if(ranges.yaxis) {
+                self.yranges = ranges;
+            }
             self.invalidate();
-            self.builder.set_xrange(ranges.xaxis);
+            if(ranges.xaxis) {
+                self.builder.set_xrange(ranges.xaxis);
+            }
+            self.builder.draw_visible();
         });
         return this.div;
     }
     Graph.prototype.draw = function() {
         if(this.drawn) return false;
+        var y1r = this.yranges && this.yranges.yaxis;
+        var y2r = this.yranges && this.yranges.y2axis;
         $.plot(this.div, this.datasets, {
             'grid': { "hoverable": true },
             'crosshair': { "mode": $("#selmode").val() },
@@ -94,12 +101,16 @@
                 'tickFormatter': suffix_formatter,
                 'reserveSpace': true,
                 'labelWidth': 64,
-                'position': 'left'
+                'position': 'left',
+                "min": y1r && y1r.from,
+                "max": y1r && y1r.to
                 }, {
                 'tickFormatter': suffix_formatter,
                 'labelWidth': 64,
                 'reserveSpace': true,
-                'position': 'right'
+                'position': 'right',
+                "min": y2r && y2r.from,
+                "max": y2r && y2r.to
                 }]
             });
         this.drawn = true;
