@@ -322,7 +322,9 @@
         var tm = +new Date();
         var top = $(window).scrollTop();
         var bottom = top + $(window).height();
-        var gr = this.all_graphs, lo = 0, hi = gr.length;
+        var gr = this.all_graphs;
+        if(!gr) return;
+        var lo = 0, hi = gr.length;
         // bisect left
         while(lo < hi) {
             var mid = (lo + hi) >> 1;
@@ -379,6 +381,14 @@
         }
         this.redraw();
     }
+    Builder.prototype.reset_zoom = function() {
+        this.xrange = null;
+        for(var i = 0, ni = this.all_graphs.length; i < ni; ++i) {
+            this.all_graphs[i].xrange = null;
+            this.all_graphs[i].yranges = null;
+        }
+        this.redraw();
+    }
 
     window.Builder = Builder;
     window.Rules = Rules;
@@ -395,7 +405,7 @@ jQuery(function($) {
     $("#tooltip").hide();
     $("#period").change(function() { builder.redownload(); });
     $("#selmode").change(function() { builder.redraw(); });
-    $("#reset").change(function() { builder.redraw(); });
+    $("#reset").click(function() { builder.reset_zoom(); });
 
     function select_next(selector) {
         var sel = $(selector);
@@ -417,11 +427,13 @@ jQuery(function($) {
     hk.add_key('pm', function() { $("#period").val('2678400').change(); });
     hk.add_key('py', function() { $("#period").val('31622400').change(); });
     hk.add_key('P', function() { select_next("#period"); });
+    hk.add_key('pp', function() { select_next("#period"); });
     hk.add_key('<C-p>', function() { select_prev("#period"); });
     hk.add_key('sx', function() { $("#selmode").val('x').change(); });
     hk.add_key('sy', function() { $("#selmode").val('y').change(); });
     hk.add_key('sb', function() { $("#selmode").val('xy').change(); });
     hk.add_key('S', function() { select_next("#selmode"); });
+    hk.add_key('ss', function() { select_next("#selmode"); });
     hk.add_key('<C-s>', function() { select_prev("#selmode"); });
     hk.add_key('<space>', function() { $("#reset").click(); });
     hk.add_key('<C-space>', function() { builder.redownload(); });
