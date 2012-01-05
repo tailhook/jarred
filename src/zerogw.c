@@ -35,16 +35,16 @@ void parse_and_execute(char *dir, char *url, int ulen, buffer_t *buf) {
     char *urlend = url + ulen;
     if(urlend == url)
         return; // Empty path, can't do anything
-    if(urlend[-1] == '/') {
+    if(ulen >= 11 && !strcmp(urlend - 11, "/index.json")) {
         // It's a directory, let's send info on all files
         int dirlen = strlen(dir);
-        char fulldir[dirlen + urlend - url + 1];
+        char fulldir[dirlen + urlend - url - 10];
         strcpy(fulldir, dir);
         if(fulldir[dirlen-1] == '/') {
             fulldir[dirlen-1] = 0;
         }
         assert(url[0] == '/');
-        strncat(fulldir, url, urlend - url - 1);
+        strncat(fulldir, url, urlend - url - 10);
         char *dirs[] = {fulldir, NULL};
         quickvisit_tree(buf, dirs, strlen(fulldir));
     } else {
@@ -56,8 +56,10 @@ void parse_and_execute(char *dir, char *url, int ulen, buffer_t *buf) {
         int dirlen = strlen(dir);
         char fullpath[dirlen + query - url + 1];
         strcpy(fullpath, dir);
+        int fullen = dirlen;
         if(fullpath[dirlen-1] == '/') {
             fullpath[dirlen-1] = 0;
+            fullen --;
         }
         assert(url[0] == '/');
         if(*(query-1) == '/') {
@@ -65,7 +67,14 @@ void parse_and_execute(char *dir, char *url, int ulen, buffer_t *buf) {
             traverse_tree(buf, dirs, strlen(fullpath));
             return;
         }
-        strncat(fullpath, url, query - url);
+        strncpy(fullpath + fullen, url, query - url);
+        fullen += query - url;
+        if(fullen > 5 && !memcmp(fullpath+fullen-5, ".json", 5)) {
+            fullen -= 5;
+            fullpath[fullen] = 0;
+        } else {
+            fullpath[fullen] = 0;
+        }
         char cf[16] = "AVERAGE";
         char sbuf[16];
         time_t start = 0;

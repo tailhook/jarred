@@ -8,10 +8,25 @@ Server:
     level: 5
 
 Routing:
-    routing: !Prefix ~
-    routing-by: !Uri ~
-    map:
-        "/rrd/*":
+  routing: !Prefix
+  routing-by: !Uri
+  map:
+    "/*":
+      routing: !Suffix
+      routing-by: !Path
+      map:
+        "*.html":
+          static:
+            enabled: yes
+            root: ./public
+            single-uri: /default.html
+            restrict-root: no  # sorry can't for relative path
+        "*.js":
+          static:
+            enabled: yes
+            root: /etc/jarred
+            restrict-root: yes
+        "*.json":
           zmq-forward:
             enabled: yes
             timeout: 5
@@ -19,24 +34,29 @@ Routing:
             - !Uri
             socket:
             - !zmq.Bind ipc://./socket
-    children:
-        - match:
-          - "/js/*"
-          - "/css/*"
-          - "/index.html"
-          - "/custom.html"
-          - "/"
-          static:
-            enabled: yes
-            root: ./public
-            index-file: index.html
-            restrict-root: no  # sorry can't for relative path
-            deny-suffixes:
-            - .swp  # vim backup file
-            - .swo  # vim backup file
-            - ~  # other editors bak file
-            - .bak  # editors and utils bak file
-            - "#"  # emacs backup file
-            - .orig  # git merging backup files
-            deny-prefixes:
-            - "."  # hidden files
+  children:
+      - match:
+        - "/index.html"
+        - "/"
+        static:
+          enabled: yes
+          root: /etc/jarred
+          restrict-root: yes
+          index-file: index.html
+      - match:
+        - "/js/*"
+        - "/css/*"
+        - "/custom.html"
+        static:
+          enabled: yes
+          root: ./public
+          restrict-root: no  # sorry can't for relative path
+          deny-suffixes:
+          - .swp  # vim backup file
+          - .swo  # vim backup file
+          - ~  # other editors bak file
+          - .bak  # editors and utils bak file
+          - "#"  # emacs backup file
+          - .orig  # git merging backup files
+          deny-prefixes:
+          - "."  # hidden files

@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Statistics</title>
+        <link rel="stylesheet" href="/css/main.css">
+        <script src="/js/jquery.js"></script>
+        <script src="/js/jquery.flot.js"></script>
+        <script src="/js/jquery.jstree.js"></script>
+        <script src="/js/jquery.hotkeys.js"></script>
+        <script src="/js/jquery.flot.crosshair.js"></script>
+        <script src="/js/jquery.flot.selection.js"></script>
+        <script src="/js/jquery.flot.stack.js"></script>
+        <script src="/js/format.js"></script>
+        <script src="/js/graphing.js"></script>
+    </head>
+    <body class="presets">
+        <div id="content">
+            <div id="graph">
+            </div>
+        </div>
+        <div id="tooltip"></div>
+        <div id="sidebar">
+            <div id="menu">
+            </div>
+            <div id="bottom">
+                <select id="period">
+                    <option value="3600">Hour</option>
+                    <option value="86400">Day</option>
+                    <option value="604800" selected>Week</option>
+                    <option value="2678400">Month</option>
+                    <option value="31622400">Year</option>
+                </select>
+                <select id="selmode">
+                    <option value="xy">X,Y</option>
+                    <option value="x">X</option>
+                    <option value="y">Y</option>
+                </select>
+                <button id="reset">reset</button>
+                <ul>
+                    <li><a href="/index.html">Index</a></li>
+                    <li><a href="/custom.html">Custom</a></li>
+                </ul>
+            </div>
+        </div>
+        <div id="loader"></div>
+    </body>
+</html>

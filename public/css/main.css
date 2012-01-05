@@ -29,7 +29,7 @@ ul {
     color: gray;
     opacity: 0.5;
 }
-#menu {
+#sidebar {
     position: fixed;
     left: 8px;
     top: 8px;
@@ -40,18 +40,13 @@ ul {
 #content {
     position: relative;
     left: 272px;
+    top: 32px;
     display: inline-block;
 }
-#toolbar {
+#bottom {
     position: absolute;
-    right: 8px;
-    top: 8px;
-}
-#toolbar li {
-    display: inline-block;
-    padding: 4px 8px 4px 8px;
-}
-#toolbar li.current {
-    background-color: lightblue;
+    bottom: 8px;
+    background: white;
+    z-index: 100;
 }
 
