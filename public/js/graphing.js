@@ -1,8 +1,9 @@
 (function(window, $) {
     var slice = Array.prototype.slice;
 
-    function Graph() {
+    function Graph(builder) {
         this.datasets = [];
+        this.builder = builder;
     }
     Graph.prototype.add_dataset = function(info, rrd, alldata, index) {
         this.datasets.push(info);
@@ -57,6 +58,7 @@
     Graph.prototype.make_div = function() {
         this.drawn = false;
         this.div = $("<div class='graph'>").attr('id', this.id);
+        var self = this;
         this.div.bind('plothover', function (event, pos, item) {
             if(item) {
                 var dt = new Date();
@@ -69,6 +71,10 @@
             } else {
                 $("#tooltip").hide();
             }
+        }).bind('plotselected', function(event, ranges) {
+            self.yranges = ranges;
+            self.invalidate();
+            self.builder.set_xrange(ranges.xaxis);
         });
         return this.div;
     }
@@ -79,8 +85,22 @@
             'crosshair': { "mode": $("#selmode").val() },
             'selection': { "mode": $("#selmode").val() },
             'legend': { 'position': 'nw' },
-            'xaxis': { "mode": "time" },
-            'yaxis': { 'tickFormatter': suffix_formatter }
+            'xaxis': {
+                "mode": "time",
+                "min": this.xrange && this.xrange.from,
+                "max": this.xrange && this.xrange.to
+                },
+            'yaxes': [{
+                'tickFormatter': suffix_formatter,
+                'reserveSpace': true,
+                'labelWidth': 64,
+                'position': 'left'
+                }, {
+                'tickFormatter': suffix_formatter,
+                'labelWidth': 64,
+                'reserveSpace': true,
+                'position': 'right'
+                }]
             });
         this.drawn = true;
         return true;
@@ -126,7 +146,7 @@
         }
         return tgt;
     }
-    Rules.prototype.make_graphs = function (rrds) {
+    Rules.prototype.make_graphs = function (rrds, builder) {
         var tm = +new Date();
         var groups = {};
         var graphs = {};
@@ -155,7 +175,7 @@
                     if(g) {
                         g.add_dataset(gparams, rrd, rrd.data, k);
                     } else {
-                        g = new Graph();
+                        g = new Graph(builder);
                         g.add_dataset(gparams, rrd, rrd.data, k);
                         graphs[g.id] = g;
                         var gr = groups[gparams.group];
@@ -265,7 +285,7 @@
 
     Builder.prototype.process_rrds = function(rrds) {
         var allgr = this.all_graphs = [];
-        var graphs = this.rules.make_graphs(rrds);
+        var graphs = this.rules.make_graphs(rrds, this);
         var cont = $("#content");
         var menu = $("#menu");
         for(var i in graphs) {
@@ -328,6 +348,7 @@
         this.all_graphs = null;
         $("#content").empty();
         $("#menu").empty();
+        this.xrange = null;
     }
     Builder.prototype.redownload = function redownload() {
         this.stop();
@@ -339,6 +360,13 @@
             this.all_graphs[i].invalidate();
         }
         this.draw_visible();
+    }
+    Builder.prototype.set_xrange = function(range) {
+        this.xrange = range;
+        for(var i = 0, ni = this.all_graphs.length; i < ni; ++i) {
+            this.all_graphs[i].xrange = range;
+        }
+        this.redraw();
     }
 
     window.Builder = Builder;

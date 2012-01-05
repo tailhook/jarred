@@ -1,5 +1,5 @@
 .graph {
-    width: 720px;
+    width: 928px;
     height: 240px;
 }
 a, a:hover, a:visited {
@@ -33,14 +33,17 @@ ul {
     position: fixed;
     left: 8px;
     top: 8px;
-    width: 256px;
-    overflow-y: auto;
+    width: 220px;
     bottom: 8px;
+}
+#menu {
+    list-style: none;
+    overflow-y: auto;
 }
 #content {
     position: relative;
-    left: 272px;
-    top: 32px;
+    left: 250px;
+    top: 8px;
     display: inline-block;
 }
 #bottom {
