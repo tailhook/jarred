@@ -23,20 +23,36 @@
         info.data = data;
     }
     function suffix_formatter(val, axis) {
-        if (val > 1000000000)
-            return (val / 1000000000).toFixed(1) + " G";
-        else if (val > 1000000)
-            return (val / 1000000).toFixed(1) + " M";
-        else if (val > 1000)
-            return (val / 1000).toFixed(1) + " k";
-        else if (val > 10)
-            return val.toFixed(0);
-        else if (val > 2)
-            return val.toFixed(1);
-        else if (val > 0.1)
-            return val.toFixed(2);
-        else
-            return val.toFixed(3);
+        var diff = axis.max - axis.min;
+        var prec = 0;
+        if (diff > 1000000000) {
+            prec = -8;
+        } else if (diff > 1000000) {
+            prec = -5;
+        } else if (diff > 1000) {
+            prec = -2;
+        } else if (diff > 10) {
+            prec = 0;
+        } else if (diff > 2) {
+            prec = 1;
+        } else if (diff > 0.1) {
+            prec = 2;
+        } else {
+            prec = 3;
+        }
+
+        if (val > 1000000000) {
+            prec += 9;
+            return (val / 1000000000).toFixed(Math.max(prec, 0)) + " G";
+        } else if (val > 1000000) {
+            prec += 6;
+            return (val / 1000000).toFixed(Math.max(prec, 0)) + " M";
+        } else if (val > 1000) {
+            prec += 3;
+            return (val / 1000).toFixed(Math.max(prec, 0)) + " k";
+        } else {
+            return val.toFixed(Math.max(prec, 0));
+        }
     }
     Graph.prototype.make_div = function() {
         this.drawn = false;
@@ -45,7 +61,8 @@
             if(item) {
                 var dt = new Date();
                 dt.setTime(item.datapoint[0]);
-                $("#tooltip").text(suffix_formatter(item.datapoint[1])
+                $("#tooltip").text(suffix_formatter(item.datapoint[1],
+                                                    item.series.yaxis)
                         + ' at ' + dt)
                     .css({'left': item.pageX + 5, 'top': item.pageY + 5 })
                     .show();
@@ -61,7 +78,8 @@
             'grid': { "hoverable": true },
             'crosshair': { "mode": $("#selmode").val() },
             'selection': { "mode": $("#selmode").val() },
-            'xaxis': { "mode": "time" }
+            'xaxis': { "mode": "time" },
+            'yaxis': { 'tickFormatter': suffix_formatter }
             });
         this.drawn = true;
         return true;
