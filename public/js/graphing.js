@@ -78,11 +78,15 @@
             'grid': { "hoverable": true },
             'crosshair': { "mode": $("#selmode").val() },
             'selection': { "mode": $("#selmode").val() },
+            'legend': { 'position': 'nw' },
             'xaxis': { "mode": "time" },
             'yaxis': { 'tickFormatter': suffix_formatter }
             });
         this.drawn = true;
         return true;
+    }
+    Graph.prototype.invalidate = function() {
+        this.drawn = false;
     }
 
     function Rules() {
@@ -143,7 +147,6 @@
                         m = mi.exec(rrd.datasets[k]);
                     }
                     if(!m) {
-                        console.log("SKIPPED", rrd.datasets[k], mi);
                         continue;
                     }
                     subs.item = m;
@@ -171,17 +174,41 @@
     }
 
     function Builder(rule_file, urls) {
-        var requests = [$.ajax({
-            'url': rule_file,
-            'dataType': 'script'
+        this.rule_file = rule_file;
+        this.urls = urls;
+        this._cur_requests = [];
+        var self = this;
+        this.clean_requests = function () {
+            var req = self._cur_requests;
+            for(var i = 0, ni = req.length; i < ni; ++i) {
+                req[i].abort();
+            }
+            self._cur_requests = [];
+        }
+    }
+    Builder.prototype._request = function _request(props) {
+        var req = $.ajax(props);
+        this._cur_requests.push(req);
+        return req;
+    }
+    Builder.prototype.download = function download() {
+        var urls = this.urls;
+        var rule_file = this.rule_file;
+        var requests = [];
+        var self = this;
+        requests.push(
+            this._request({
+                'url': rule_file,
+                'dataType': 'script'
             }).pipe(null, function() {
-                return $.ajax({
+                return self._request({
                     'url': '/js/default_rules.js',
                     'dataType': 'script'
                     });
-            })];
+            }));
         for(var i = 0, ni = urls.length; i < ni; ++i) {
-            requests.push($.ajax({
+            console.log("URLS", urls);
+            requests.push(this._request({
                 'url': urls[i] + '/index.json',
                 'dataType': 'json'
                 }).pipe(function(lst) {
@@ -195,11 +222,14 @@
                     return lst;
                 }));
         }
-        $.when.apply(null, requests).done(loaded_basic_data);
+        $.when.apply(null, requests)
+            .always(this.clean_requests)
+            .done(loaded_basic_data);
 
         var self = this;
         function loaded_basic_data(rules_file) {
             var rules = window.current_rules;
+            this.rules = rules;
             var filenames = [];
             for(var i = 1, ni = arguments.length; i < ni; ++i) {
                 filenames = filenames.concat(arguments[i]);
@@ -211,13 +241,13 @@
     Builder.prototype.load_graphs = function(rules, filenames) {
         this.rules = rules;
         filenames = rules.filter_files(filenames);
+        this.filenames = filenames;
         var requests = [];
         var tm = +new Date()/1000;
         var period = $("#period").val();
-        console.log("PERIOD", period);
         var step = Math.round(period / 720);
         for(var i = 0, ni = filenames.length; i < ni; ++i) {
-            requests.push($.ajax({
+            requests.push(this._request({
                 'url': filenames[i]+'.rrd.json'
                     + '?start=' + (tm-period)
                     + '&end=' + tm + '&step=' + step + '&cf=AVERAGE',
@@ -291,7 +321,25 @@
             console.log("Drawn", drawn, "in", +new Date() - tm, 'ms');
         }
     }
-
+    Builder.prototype.stop = function stop() {
+        this.clean_requests();
+    }
+    Builder.prototype.clean = function clean() {
+        this.all_graphs = null;
+        $("#content").empty();
+        $("#menu").empty();
+    }
+    Builder.prototype.redownload = function redownload() {
+        this.stop();
+        this.clean();
+        this.load_graphs(this.rules, this.filenames);
+    }
+    Builder.prototype.redraw = function() {
+        for(var i = 0, ni = this.all_graphs.length; i < ni; ++i) {
+            this.all_graphs[i].invalidate();
+        }
+        this.draw_visible();
+    }
 
     window.Builder = Builder;
     window.Rules = Rules;
@@ -302,8 +350,42 @@ jQuery(function($) {
     if(url.substr(-5) == '.html') {
         url = url.substr(0, url.length-5);
     }
-    this.graph_builder = new Builder(url + '.js', [url]);
+    var builder = this.graph_builder = new Builder(url + '.js', [url]);
+    builder.download();
 
     $("#tooltip").hide();
+    $("#period").change(function() { builder.redownload(); });
+    $("#selmode").change(function() { builder.redraw(); });
+    $("#reset").change(function() { builder.redraw(); });
+
+    function select_next(selector) {
+        var sel = $(selector);
+        var all = $("option", sel).length;
+        sel.prop('selectedIndex', (sel.prop('selectedIndex') + 1) % all);
+        sel.change();
+    }
+    function select_prev(selector) {
+        var sel = $(selector);
+        var all = $("option", sel).length;
+        sel.prop('selectedIndex', (sel.prop('selectedIndex') + all - 1) % all);
+        sel.change();
+    }
+
+    var hk = new Hotkeys();
+    hk.add_key('ph', function() { $('#period').val('3600').change(); });
+    hk.add_key('pd', function() { $("#period").val('86400').change(); });
+    hk.add_key('pw', function() { $("#period").val('604800').change(); });
+    hk.add_key('pm', function() { $("#period").val('2678400').change(); });
+    hk.add_key('py', function() { $("#period").val('31622400').change(); });
+    hk.add_key('P', function() { select_next("#period"); });
+    hk.add_key('<C-p>', function() { select_prev("#period"); });
+    hk.add_key('sx', function() { $("#selmode").val('x').change(); });
+    hk.add_key('sy', function() { $("#selmode").val('y').change(); });
+    hk.add_key('sb', function() { $("#selmode").val('xy').change(); });
+    hk.add_key('S', function() { select_next("#selmode"); });
+    hk.add_key('<C-s>', function() { select_prev("#selmode"); });
+    hk.add_key('<space>', function() { $("#reset").click(); });
+    hk.add_key('<C-space>', function() { builder.redownload(); });
+    hk.bind_to(document);
 
 });
