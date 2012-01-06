@@ -52,4 +52,6 @@ ul {
     background: white;
     z-index: 100;
 }
-
+td.legendColorBox, td.legendLabel {
+    cursor: pointer;
+}

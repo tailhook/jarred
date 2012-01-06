@@ -1,17 +1,16 @@
 (function(window, $) {
     var slice = Array.prototype.slice;
 
-    function Graph(builder) {
+    function Graph(id, builder) {
+        this.id = id;
         this.datasets = [];
+        this.hidden = {};
         this.builder = builder;
     }
     Graph.prototype.add_dataset = function(info, rrd, alldata, index) {
         this.datasets.push(info);
         if(!this.title) {
             this.title = info.title;
-        }
-        if(!this.id) {
-            this.id = info.graph;
         }
         delete info.title;
         delete info.graph;
@@ -22,6 +21,9 @@
             data.push([(start+step*i) * 1000, alldata[i][index]]);
         }
         info.data = data;
+        if(!info.id) {
+            info.id = this.id + '-' + this.datasets.length;
+        }
     }
     function suffix_formatter(val, axis) {
         var diff = axis.max - axis.min;
@@ -88,11 +90,23 @@
         if(this.drawn) return false;
         var y1r = this.yranges && this.yranges.yaxis;
         var y2r = this.yranges && this.yranges.y2axis;
+        for(var i = 0, ni = this.datasets.length; i < ni; ++i) {
+            var ds = this.datasets[i];
+            if(!ds.lines) {
+                ds.lines = {};
+            }
+            ds.lines['show'] = !this.hidden[ds.id];
+        }
         $.plot(this.div, this.datasets, {
             'grid': { "hoverable": true },
             'crosshair': { "mode": $("#selmode").val() },
             'selection': { "mode": $("#selmode").val() },
-            'legend': { 'position': 'nw' },
+            'legend': {
+                'labelFormatter': function(label, series) {
+                    return '<a name="'+series.id+'">' + label + '</a>';
+                    },
+                'position': 'nw'
+                },
             'xaxis': {
                 "mode": "time",
                 "min": this.xrange && this.xrange.from,
@@ -114,6 +128,14 @@
                 "max": y2r && y2r.to
                 }]
             });
+        var self = this;
+        $("td.legendColorBox, td.legendLabel", this.div).click(function(ev) {
+            var tr = $(ev.target).closest('tr');
+            var series_id = $('a', tr).attr('name');
+            self.hidden[series_id] = !self.hidden[series_id];
+            self.invalidate();
+            self.draw();
+        });
         this.drawn = true;
         return true;
     }
@@ -187,7 +209,7 @@
                     if(g) {
                         g.add_dataset(gparams, rrd, rrd.data, k);
                     } else {
-                        g = new Graph(builder);
+                        g = new Graph(gparams.graph, builder);
                         g.add_dataset(gparams, rrd, rrd.data, k);
                         graphs[g.id] = g;
                         var gr = groups[gparams.group];
