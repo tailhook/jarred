@@ -497,7 +497,7 @@
         while(lo < hi) {
             var mid = (lo + hi) >> 1;
             var d = gr[mid].div;
-            var v = d.offset().top;
+            var v = d.offset().top + d.height();
             if(v < top) lo = mid+1;
             else hi = mid;
         }
@@ -507,7 +507,7 @@
         while(lo < hi) {
             var mid = (lo + hi) >> 1;
             var d = gr[mid].div;
-            var v = d.offset().top + d.height();
+            var v = d.offset().top;
             if(bottom < v) hi = mid;
             else lo = mid+1;
         }
