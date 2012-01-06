@@ -36,17 +36,11 @@ Routing:
             - !zmq.Bind ipc://./socket
   children:
       - match:
-        - "/index.html"
         - "/"
-        static:
-          enabled: yes
-          root: /etc/jarred
-          restrict-root: yes
-          index-file: index.html
-      - match:
         - "/js/*"
         - "/css/*"
         - "/custom.html"
+        - "/index.html"
         static:
           enabled: yes
           root: ./public

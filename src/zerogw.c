@@ -7,6 +7,8 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
+#include <sys/types.h>
+#include <dirent.h>
 
 #include "roundrobin.h"
 #include "buffer.h"
@@ -31,22 +33,61 @@ void free_buffer(void *data, buffer_t *buf) {
     free(buf);
 }
 
-void parse_and_execute(char *dir, char *url, int ulen, buffer_t *buf) {
+void parse_and_execute(char *dir, char *presetdir,
+                       char *url, int ulen, buffer_t *buf)
+{
     char *urlend = url + ulen;
     if(urlend == url)
         return; // Empty path, can't do anything
     if(ulen >= 11 && !strncmp(urlend - 11, "/index.json", 11)) {
-        // It's a directory, let's send info on all files
-        int dirlen = strlen(dir);
-        char fulldir[dirlen + urlend - url - 10];
-        strcpy(fulldir, dir);
-        if(fulldir[dirlen-1] == '/') {
-            fulldir[dirlen-1] = 0;
+        if(ulen == 11) {
+            // It's root index, let's send short index
+            STDASSERT(buffer_printf(buf, "{\"presets\": [\n"));
+            DIR *dhandle = opendir(presetdir);
+            if(dhandle) {
+                struct dirent *ent;
+                int first = TRUE;
+                while((ent = readdir(dhandle))) {
+                    if(ent->d_name[0] == '.') continue;
+                    if(!first) {
+                        STDASSERT(buffer_printf(buf, ",\n"));
+                    } else {
+                        first = FALSE;
+                    }
+                    STDASSERT(buffer_printf(buf, "\"%s\"", ent->d_name));
+                }
+                STDASSERT(closedir(dhandle));
+            }
+            STDASSERT(buffer_printf(buf, "\n], \"hosts\": [\n"));
+            dhandle = opendir(dir);
+            if(dhandle) {
+                struct dirent *ent;
+                int first = TRUE;
+                while((ent = readdir(dhandle))) {
+                    if(ent->d_name[0] == '.') continue;
+                    if(!first) {
+                        STDASSERT(buffer_printf(buf, ",\n"));
+                    } else {
+                        first = FALSE;
+                    }
+                    STDASSERT(buffer_printf(buf, "\"%s\"", ent->d_name));
+                }
+                STDASSERT(closedir(dhandle));
+            }
+            STDASSERT(buffer_printf(buf, "]}\n"));
+        } else {
+            // It's a directory, let's send info on all files
+            int dirlen = strlen(dir);
+            char fulldir[dirlen + urlend - url - 10];
+            strcpy(fulldir, dir);
+            if(fulldir[dirlen-1] == '/') {
+                fulldir[dirlen-1] = 0;
+            }
+            assert(url[0] == '/');
+            strncat(fulldir, url, urlend - url - 10);
+            char *dirs[] = {fulldir, NULL};
+            quickvisit_tree(buf, dirs, strlen(fulldir));
         }
-        assert(url[0] == '/');
-        strncat(fulldir, url, urlend - url - 10);
-        char *dirs[] = {fulldir, NULL};
-        quickvisit_tree(buf, dirs, strlen(fulldir));
     } else {
         char *query = memchr(url, '?', urlend - url);
         if(!query) {
@@ -126,10 +167,11 @@ int main(int argc, char **argv) {
     assert(zmqsock);
     char *dir = NULL;
     char *prefix = "";
+    char *presetdir = "/etc/jarred";
     int prefixlen = 0;
 
     int opt;
-    while((opt = getopt(argc, argv, "hc:b:d:p:")) != -1) {
+    while((opt = getopt(argc, argv, "hc:b:d:p:s:")) != -1) {
         switch(opt) {
         case 'c': // connect
             STDASSERT(zmq_connect(zmqsock, optarg))
@@ -140,9 +182,12 @@ int main(int argc, char **argv) {
         case 'd': // dir
             dir = optarg;
             break;
-        case 'p': // dir
+        case 'p': // prefix
             prefix = optarg;
             prefixlen = strlen(optarg);
+            break;
+        case 's': // dir with presets
+            presetdir = optarg;
             break;
         case 'h':
             print_usage(stdout);
@@ -180,7 +225,7 @@ int main(int argc, char **argv) {
         } else {
             data += prefixlen;
             dlen -= prefixlen;
-            parse_and_execute(dir, data, dlen, buf);
+            parse_and_execute(dir, presetdir, data, dlen, buf);
         }
         zmq_msg_init_data(&msg, buf->data, buf->size,
             (void (*)(void*, void*))free_buffer, buf);

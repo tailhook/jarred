@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Statistics</title>
+        <link rel="stylesheet" href="/css/main.css">
+        <script src="/js/jquery.js"></script>
+        <script>
+            jQuery(function($) {
+                $.ajax({
+                    'url': '/index.json',
+                    'dataType': 'json'
+                }).done(function(data) {
+                    var presets = $("#presets");
+                    $.map(data.presets, function(preset) {
+                        if(preset.substr(-3) == '.js') {
+                            preset = preset.substr(0, preset.length-3);
+                        }
+                        var servers = $("#servers");
+                        var link = $("<a>")
+                            .attr('href', '/'+preset+'.html')
+                            .text(preset);
+                        presets.append($("<li>").append(link));
+                    });
+                    var servers = $("#servers");
+                    $.map(data.hosts, function(host) {
+                        var link = $("<a>")
+                            .attr('href', '/'+host+'.html')
+                            .text(host);
+                        servers.append($("<li>").append(link));
+                    });
+                });
+            });
+        </script>
+    </head>
+    <body>
+        <h2>Presets</h2>
+        <ul id="presets">
+        </ul>
+        <h2>Servers</h2>
+        <ul id="servers">
+        </ul>
+    </body>
+</html>

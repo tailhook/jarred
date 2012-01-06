@@ -25,10 +25,9 @@ jQuery(function($) {
             .click(function() { builder.redownload(); });
     }
     $.ajax({
-        'url': '/index.html',
-        'dataType': 'html'
-    }).then(function(piece) {
-        var div = $('<div>').append($(piece));
+        'url': '/index.json',
+        'dataType': 'json'
+    }).then(function(data) {
         $("#menu").jstree({
             "json_data": {
                 'ajax': {
@@ -61,13 +60,12 @@ jQuery(function($) {
                         return children;
                         }
                     },
-                "data": $('#servers a', div).map(function(idx, el) {
-                    var host = $(el).text();
+                "data": $.map(data.hosts, function(host) {
                     return {
                         'data': host,
                         'state': 'closed'
                         };
-                    }).get()
+                    })
                 },
                 "plugins": ["themes", "json_data", "ui", "hotkeys"],
                 "themes": {"theme": "default",
