@@ -428,11 +428,11 @@ jQuery(function($) {
         var builder = this.graph_builder = new Builder(
             window.current_rules, window.current_urls);
         builder.download();
-        window.builder = builder;
 
         $("#period").change(function() { builder.redownload(); });
         $("#selmode").change(function() { builder.redraw(); });
         $("#reset").click(function() { builder.reset(); });
+        $("#refresh").click(function() { builder.redownload(); });
     });
 
     function select_next(selector) {
@@ -464,6 +464,6 @@ jQuery(function($) {
     hk.add_key('ss', function() { select_next("#selmode"); });
     hk.add_key('<C-s>', function() { select_prev("#selmode"); });
     hk.add_key('<space>', function() { $("#reset").click(); });
-    hk.add_key('<C-space>', function() { builder.redownload(); });
+    hk.add_key('<C-space>', function() { $("#refresh").click(); });
     hk.bind_to(document);
 });
