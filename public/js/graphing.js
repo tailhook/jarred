@@ -142,6 +142,11 @@
     Graph.prototype.invalidate = function() {
         this.drawn = false;
     }
+    Graph.prototype.reset = function() {
+        this.xrange = null;
+        this.yranges = null;
+        this.hidden = {};
+    }
 
     function Rules() {
         this.rules = [];
@@ -276,11 +281,12 @@
             }
             filenames = self.rules.filter_files(filenames);
             self.filenames = filenames;
-            self.load_graphs(filenames);
+            self.load_graphs();
         }
     }
 
-    Builder.prototype.load_graphs = function(filenames) {
+    Builder.prototype.load_graphs = function() {
+        var filenames = this.filenames;
         var requests = [];
         var tm = +new Date()/1000;
         var period = $("#period").val();
@@ -374,7 +380,7 @@
     Builder.prototype.redownload = function redownload() {
         this.stop();
         this.clean();
-        this.load_graphs(this.rules, this.filenames);
+        this.load_graphs();
     }
     Builder.prototype.redraw = function() {
         for(var i = 0, ni = this.all_graphs.length; i < ni; ++i) {
@@ -389,11 +395,10 @@
         }
         this.redraw();
     }
-    Builder.prototype.reset_zoom = function() {
+    Builder.prototype.reset = function() {
         this.xrange = null;
         for(var i = 0, ni = this.all_graphs.length; i < ni; ++i) {
-            this.all_graphs[i].xrange = null;
-            this.all_graphs[i].yranges = null;
+            this.all_graphs[i].reset();
         }
         this.redraw();
     }
@@ -423,10 +428,11 @@ jQuery(function($) {
         var builder = this.graph_builder = new Builder(
             window.current_rules, window.current_urls);
         builder.download();
+        window.builder = builder;
 
         $("#period").change(function() { builder.redownload(); });
         $("#selmode").change(function() { builder.redraw(); });
-        $("#reset").click(function() { builder.reset_zoom(); });
+        $("#reset").click(function() { builder.reset(); });
     });
 
     function select_next(selector) {
