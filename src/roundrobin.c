@@ -121,8 +121,11 @@ void format_data(buffer_t *buf, char *filename, char *cf,
     unsigned long nds=2;
     char **dnames;
     rrd_value_t *data;
-    STDASSERT(rrd_fetch_r(filename, cf, &start, &end, &step,
-        &nds, &dnames, &data));
+    if(rrd_fetch_r(filename, cf, &start, &end, &step,
+        &nds, &dnames, &data) < 0) {
+        STDASSERT(buffer_printf(buf, "{\"error\": \"not found\"}\n"));
+        return;
+    }
     STDASSERT(buffer_printf(buf, "{\n"));
     STDASSERT(buffer_printf(buf, "\"consolidation_function\": \"%s\",\n", cf));
     STDASSERT(buffer_printf(buf, "\"start\": %lu,\n", start));
