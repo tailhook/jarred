@@ -44,6 +44,26 @@
         yaxis: 2
         })
 
+    // Disk
+    rules.add_rule({
+        match_rrd: /^([^/]+)\/disk-(sd[abc])\/disk_octets$/,
+        match_item: /^.*$/,
+        group: '{rrd.1}',
+        graph: '{rrd.1}-disk_octets-{rrd.2}',
+        title: 'Disk throughtput {rrd.2}',
+        label: 'Bytes {item.0}',
+        yaxis: 1
+        })
+    rules.add_rule({
+        match_rrd: /^([^/]+)\/disk-(sd[abc])\/disk_time$/,
+        match_item: /^.*$/,
+        group: '{rrd.1}',
+        graph: '{rrd.1}-disk_time-{rrd.2}',
+        title: 'Average seek time',
+        label: '{item.0} time, ms',
+        yaxis: 1
+        })
+
     // Nginx
     rules.add_rule({
         match_rrd: /^([^/]+)\/nginx\/nginx_requests$/,
@@ -105,6 +125,21 @@
         yaxis: 2
         });
 
+
     window.current_rules = rules;
+
+    if(window.current_hosts) {
+        var urls = [];
+        for(var i = 0, ni = window.current_hosts.length; i < ni; ++i) {
+            urls.push('/' + window.current_hosts[i]);
+        }
+        window.current_urls = urls;
+    } else {
+        var url = location.pathname;
+        if(url.substr(-5) == '.html') {
+            url = url.substr(0, url.length-5);
+        }
+        window.current_urls = [url];
+    }
 
 })(this, jQuery);

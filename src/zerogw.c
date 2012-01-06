@@ -35,7 +35,7 @@ void parse_and_execute(char *dir, char *url, int ulen, buffer_t *buf) {
     char *urlend = url + ulen;
     if(urlend == url)
         return; // Empty path, can't do anything
-    if(ulen >= 11 && !strcmp(urlend - 11, "/index.json")) {
+    if(ulen >= 11 && !strncmp(urlend - 11, "/index.json", 11)) {
         // It's a directory, let's send info on all files
         int dirlen = strlen(dir);
         char fulldir[dirlen + urlend - url - 10];

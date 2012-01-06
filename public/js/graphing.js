@@ -65,7 +65,8 @@
                 dt.setTime(item.datapoint[0]);
                 $("#tooltip").text(suffix_formatter(item.datapoint[1],
                                                     item.series.yaxis)
-                        + ' at ' + dt)
+                                   + ' at ' + dt + '\n'
+                                   + item.series.label)
                     .css({'left': item.pageX + 5, 'top': item.pageY + 5 })
                     .show();
             } else {
@@ -204,8 +205,8 @@
         return groups;
     }
 
-    function Builder(rule_file, urls) {
-        this.rule_file = rule_file;
+    function Builder(rules, urls) {
+        this.rules = rules;
         this.urls = urls;
         this._cur_requests = [];
         var self = this;
@@ -224,21 +225,9 @@
     }
     Builder.prototype.download = function download() {
         var urls = this.urls;
-        var rule_file = this.rule_file;
         var requests = [];
         var self = this;
-        requests.push(
-            this._request({
-                'url': rule_file,
-                'dataType': 'script'
-            }).pipe(null, function() {
-                return self._request({
-                    'url': '/js/default_rules.js',
-                    'dataType': 'script'
-                    });
-            }));
         for(var i = 0, ni = urls.length; i < ni; ++i) {
-            console.log("URLS", urls);
             requests.push(this._request({
                 'url': urls[i] + '/index.json',
                 'dataType': 'json'
@@ -258,21 +247,18 @@
             .done(loaded_basic_data);
 
         var self = this;
-        function loaded_basic_data(rules_file) {
-            var rules = window.current_rules;
-            this.rules = rules;
+        function loaded_basic_data() {
             var filenames = [];
-            for(var i = 1, ni = arguments.length; i < ni; ++i) {
+            for(var i = 0, ni = arguments.length; i < ni; ++i) {
                 filenames = filenames.concat(arguments[i]);
             }
-            self.load_graphs(rules, filenames);
+            filenames = self.rules.filter_files(filenames);
+            self.filenames = filenames;
+            self.load_graphs(filenames);
         }
     }
 
-    Builder.prototype.load_graphs = function(rules, filenames) {
-        this.rules = rules;
-        filenames = rules.filter_files(filenames);
-        this.filenames = filenames;
+    Builder.prototype.load_graphs = function(filenames) {
         var requests = [];
         var tm = +new Date()/1000;
         var period = $("#period").val();
@@ -395,17 +381,31 @@
 })(this, jQuery);
 
 jQuery(function($) {
+    $("#tooltip").hide();
+
     var url = location.pathname;
     if(url.substr(-5) == '.html') {
         url = url.substr(0, url.length-5);
     }
-    var builder = this.graph_builder = new Builder(url + '.js', [url]);
-    builder.download();
+    $.ajax({
+        'url': url + '.js',
+        'dataType': 'script'
+    }).pipe(null, function() {
+        return $.ajax({
+            'url': '/js/default_rules.js',
+            'dataType': 'script'
+            });
+    }).pipe(function() {
+        return $.when(window.current_rules, window.current_urls);
+    }).done(function() {
+        var builder = this.graph_builder = new Builder(
+            window.current_rules, window.current_urls);
+        builder.download();
 
-    $("#tooltip").hide();
-    $("#period").change(function() { builder.redownload(); });
-    $("#selmode").change(function() { builder.redraw(); });
-    $("#reset").click(function() { builder.reset_zoom(); });
+        $("#period").change(function() { builder.redownload(); });
+        $("#selmode").change(function() { builder.redraw(); });
+        $("#reset").click(function() { builder.reset_zoom(); });
+    });
 
     function select_next(selector) {
         var sel = $(selector);
@@ -438,5 +438,4 @@ jQuery(function($) {
     hk.add_key('<space>', function() { $("#reset").click(); });
     hk.add_key('<C-space>', function() { builder.redownload(); });
     hk.bind_to(document);
-
 });
