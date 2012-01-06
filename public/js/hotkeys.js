@@ -46,6 +46,9 @@ function Hotkeys() {
         if(!nstate) nstate = bindings;
         nstate = nstate[key];
         if(!nstate) {
+            if(self.modifiers[key]) {
+                return false;
+            }
             state = null;
             return true;
         }
@@ -103,6 +106,9 @@ Hotkeys.prototype.specialKeys = {
     109: "-", 110: ".", 111 : "/", 112: "f1", 113: "f2", 114: "f3", 115: "f4",
     116: "f5", 117: "f6", 118: "f7", 119: "f8", 120: "f9", 121: "f10", 122:
     "f11", 123: "f12", 144: "numlock", 145: "scroll", 191: "/",
+    91: "win",
+    189: "-",
+    187: "=",
     219: "[",
     221: "]",
     224: "meta"
@@ -112,4 +118,10 @@ Hotkeys.prototype.shiftNums = {
     "`": "~", "1": "!", "2": "@", "3": "#", "4": "$", "5": "%", "6": "^", "7":
     "&", "8": "*", "9": "(", "0": ")", "-": "_", "=": "+", ";": ": ", "'":
     "\"", ",": "<", ".": ">",  "/": "?",  "\\": "|"
+    };
+Hotkeys.prototype.modifiers = {
+    '<shift>': 1,
+    '<alt>': 1,
+    '<ctrl>': 1,
+    '<win>': 1
     };

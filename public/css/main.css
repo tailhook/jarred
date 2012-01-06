@@ -33,7 +33,7 @@ ul {
     position: fixed;
     left: 8px;
     top: 8px;
-    width: 220px;
+    width: 230px;
     bottom: 8px;
 }
 #menu {
@@ -41,6 +41,7 @@ ul {
     overflow-y: auto;
     top: 8px;
     bottom: 128px;
+    width: 230px;
     position: absolute;
 }
 #content {

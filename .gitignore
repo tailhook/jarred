@@ -2,6 +2,4 @@
 .lock-*
 .waf*
 *.tar.gz
-/public/js/rules_local.js
-/public/js/presets.js
 /tmp

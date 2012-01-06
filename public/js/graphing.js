@@ -195,8 +195,9 @@
         }
         return tgt;
     }
-    function _aggregate(a, data, index) {
-        if(a.aggregation == 'sum') {
+    function _aggregate(a, agg, data, index) {
+        switch(agg) {
+        case 'sum':
             for(var i = 0, ni = a.data.length; i < ni; ++i) {
                 if(a.data[i][1] == null || data[i][index] == null) {
                     a.data[i][1] = null;
@@ -204,7 +205,17 @@
                     a.data[i][1] += data[i][index];
                 }
             }
-        } else {
+            break;
+        case 'diff':
+            for(var i = 0, ni = a.data.length; i < ni; ++i) {
+                if(a.data[i][1] == null || data[i][index] == null) {
+                    a.data[i][1] = null;
+                } else {
+                    a.data[i][1] -= data[i][index];
+                }
+            }
+            break;
+        default:
             console.error("Unknown aggregation", a.aggregation);
         }
     }
@@ -237,7 +248,7 @@
                     if(gparams.id) {
                         var ds = datasets[gparams.id];
                         if(ds && ds.aggregation) {
-                            _aggregate(ds, rrd.data, k);
+                            _aggregate(ds, ds.aggregation, rrd.data, k);
                             continue;
                         } else {
                             datasets[gparams.id] = gparams;
@@ -273,17 +284,99 @@
     CustomRules.prototype.make_graphs = function (rrds, builder) {
         var tm = +new Date();
         var graphs = [];
-        for(var i = 0, ni = rrds.length; i < ni; ++i) {
-            var rrd = rrds[i];
-            var fn = rrd.filename;
-            for(var k = 0, nk = rrd.datasets.length; k < nk; ++k) {
-                g = new Graph(fn + '-' + rrd.datasets[k], builder);
-                g.add_dataset({
-                    title: fn.substr(1),
-                    label: rrd.datasets[k]
-                    }, rrd, rrd.data, k);
+        switch($("#mode").val()) {
+        case 'normal':
+            for(var i = 0, ni = rrds.length; i < ni; ++i) {
+                var rrd = rrds[i];
+                var fn = rrd.filename;
+                var g = new Graph(fn, builder);
+                for(var k = 0, nk = rrd.datasets.length; k < nk; ++k) {
+                    g.add_dataset({
+                        title: fn.substr(1),
+                        label: rrd.datasets[k]
+                        }, rrd, rrd.data, k);
+                }
                 graphs.push(g);
             }
+            break;
+        case 'single':
+            var g = new Graph('all', builder);
+            for(var i = 0, ni = rrds.length; i < ni; ++i) {
+                var rrd = rrds[i];
+                for(var k = 0, nk = rrd.datasets.length; k < nk; ++k) {
+                    g.add_dataset({
+                        title: 'All',
+                        label: rrd.datasets[k]
+                        }, rrd, rrd.data, k);
+                }
+            }
+            graphs.push(g);
+            break;
+        case 'multi-axes':
+            for(var i = 0, ni = rrds.length; i < ni; ++i) {
+                var rrd = rrds[i];
+                var fn = rrd.filename;
+                var g = new Graph(fn, builder);
+                for(var k = 0, nk = rrd.datasets.length; k < nk; ++k) {
+                    g.add_dataset({
+                        title: fn.substr(1),
+                        yaxis: k+1,
+                        label: rrd.datasets[k]
+                        }, rrd, rrd.data, k);
+                }
+                graphs.push(g);
+            }
+            break;
+        case 'multi-graph':
+            for(var i = 0, ni = rrds.length; i < ni; ++i) {
+                var rrd = rrds[i];
+                var fn = rrd.filename;
+                for(var k = 0, nk = rrd.datasets.length; k < nk; ++k) {
+                    var g = new Graph(fn + '-' + rrd.datasets[k], builder);
+                    g.add_dataset({
+                        title: fn.substr(1),
+                        label: rrd.datasets[k]
+                        }, rrd, rrd.data, k);
+                    graphs.push(g);
+                }
+            }
+            break;
+        case 'sum':
+            var g = new Graph('Sum', builder);
+            for(var i = 0, ni = rrds.length; i < ni; ++i) {
+                var rrd = rrds[i];
+                var fn = rrd.filename;
+                for(var k = 0, nk = rrd.datasets.length; k < nk; ++k) {
+                    if(!g.datasets.length) {
+                        g.add_dataset({
+                            title: fn.substr(1),
+                            label: rrd.datasets[k]
+                            }, rrd, rrd.data, k);
+                    } else {
+                        _aggregate(g.datasets[0], 'sum', rrd.data, k);
+                    }
+                }
+            }
+            graphs.push(g);
+            break;
+        case 'diff':
+            var g = new Graph('Diff', builder);
+            for(var i = 0, ni = rrds.length; i < ni; ++i) {
+                var rrd = rrds[i];
+                var fn = rrd.filename;
+                for(var k = 0, nk = rrd.datasets.length; k < nk; ++k) {
+                    if(!g.datasets.length) {
+                        g.add_dataset({
+                            title: fn.substr(1),
+                            label: rrd.datasets[k]
+                            }, rrd, rrd.data, k);
+                    } else {
+                        _aggregate(g.datasets[0], 'diff', rrd.data, k);
+                    }
+                }
+            }
+            graphs.push(g);
+            break;
         }
         console.log("Instantiated", graphs, rrds,
                     "in", +new Date() - tm, 'ms');
@@ -494,22 +587,20 @@ jQuery(function($) {
     hk.add_key('pw', function() { $("#period").val('604800').change(); });
     hk.add_key('pm', function() { $("#period").val('2678400').change(); });
     hk.add_key('py', function() { $("#period").val('31622400').change(); });
-    hk.add_key('P', function() { select_next("#period"); });
-    hk.add_key('pp', function() { select_next("#period"); });
+    hk.add_key('P pp', function() { select_next("#period"); });
     hk.add_key('<C-p>', function() { select_prev("#period"); });
     hk.add_key('sx', function() { $("#selmode").val('x').change(); });
     hk.add_key('sy', function() { $("#selmode").val('y').change(); });
     hk.add_key('sb', function() { $("#selmode").val('xy').change(); });
-    hk.add_key('S', function() { select_next("#selmode"); });
-    hk.add_key('ss', function() { select_next("#selmode"); });
+    hk.add_key('S ss', function() { select_next("#selmode"); });
     hk.add_key('<C-s>', function() { select_prev("#selmode"); });
     hk.add_key('mn', function() { $('#mode').val('normal').change(); });
-    hk.add_key('ml', function() { $('#mode').val('multi-axes').change(); });
+    hk.add_key('m1', function() { $('#mode').val('single').change(); });
+    hk.add_key('ma', function() { $('#mode').val('multi-axes').change(); });
     hk.add_key('mg', function() { $('#mode').val('multi-graph').change(); });
-    hk.add_key('ms', function() { $('#mode').val('sum').change(); });
-    hk.add_key('md', function() { $('#mode').val('dif').change(); });
-    hk.add_key('M', function() { select_next("#mode"); });
-    hk.add_key('mm', function() { select_next("#mode"); });
+    hk.add_key('ms m+ m<S-=>', function() { $('#mode').val('sum').change(); });
+    hk.add_key('md m-', function() { $('#mode').val('diff').change(); });
+    hk.add_key('M mm', function() { select_next("#mode"); });
     hk.add_key('<C-m>', function() { select_prev("#mode"); });
     hk.add_key('<space>', function() { $("#reset").click(); });
     hk.add_key('<C-space>', function() { $("#refresh").click(); });

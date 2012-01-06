@@ -17,6 +17,8 @@ jQuery(function($) {
             .change(function() { builder.redownload(); });
         $("#selmode").unbind('change')
             .change(function() { builder.redraw(); });
+        $("#mode").unbind('change')
+            .change(function() { builder.redownload(); });
         $("#reset").unbind('click')
             .click(function() { builder.reset(); });
         $("#refresh").unbind('click')
