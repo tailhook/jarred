@@ -75,8 +75,8 @@
         yaxis: 2
         });
     rules.add_rule({
-        match_rrd: /^([^/]+)\/nginx\/nginx_connections$/,
-        match_item: 'active',
+        match_rrd: /^([^/]+)\/nginx\/nginx_connections-active$/,
+        match_item: 'value',
         group: '{rrd.1}',
         graph: '{rrd.1}-nginx',
         title: 'Nginx',

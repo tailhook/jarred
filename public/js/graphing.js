@@ -65,12 +65,21 @@
             if(item) {
                 var dt = new Date();
                 dt.setTime(item.datapoint[0]);
-                $("#tooltip").text(suffix_formatter(item.datapoint[1],
-                                                    item.series.yaxis)
-                                   + ' at ' + dt + '\n'
-                                   + item.series.label)
-                    .css({'left': item.pageX + 5, 'top': item.pageY + 5 })
-                    .show();
+                var ds = '{:02d}:{:02d}:{:02d} {}.{:02d}.{}'.format(
+                    dt.getHours(), dt.getMinutes(), dt.getSeconds(),
+                    dt.getDate(), dt.getMonth()+1, dt.getYear()+1900);
+                var tt = $("#tooltip")
+                tt.empty()
+                tt.append('{2} at {0}<br>{1}'.format(ds, item.series.label,
+                    suffix_formatter(item.datapoint[1], item.series.yaxis)));
+                tt.css({'left': '0px'})
+                tt.show();
+                if(item.pageX + tt.width() + 5 > document.body.clientWidth) {
+                    tt.css({'left': item.pageX  - tt.width() - 5,
+                        'top': item.pageY + 5 })
+                } else {
+                    tt.css({'left': item.pageX + 5, 'top': item.pageY + 5 })
+                }
             } else {
                 $("#tooltip").hide();
             }
