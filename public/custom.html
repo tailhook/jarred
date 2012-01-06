@@ -10,40 +10,48 @@
         <script src="/js/jquery.flot.crosshair.js"></script>
         <script src="/js/jquery.flot.selection.js"></script>
         <script src="/js/jquery.flot.stack.js"></script>
-        <script src="/js/rules.js"></script>
-        <script src="/js/rules_local.js"></script>
-        <script src="/js/jarred.js"></script>
+        <script src="/js/format.js"></script>
+        <script src="/js/hotkeys.js"></script>
+        <script src="/js/graphing.js"></script>
+        <script src="/js/custom.js"></script>
     </head>
-    <body class="custom">
-        <ul id="toolbar">
-            <li><a href="/index.html">Presets</a></li>
-            <li class="current"><a href="/custom.html">Custom</a></li>
-        </ul>
+    <body class="presets">
         <div id="content">
-            <select id="period">
-                <option value="3600">Hour</option>
-                <option value="86400">Day</option>
-                <option value="604800">Week</option>
-                <option value="2678400">Month</option>
-                <option value="31622400">Year</option>
-            </select>
-            <select id="mode">
-                <option value="normal">Normal</option>
-                <option value="multi-axes">Multiple Axes</option>
-                <option value="multi-graph">Multiple Graphs</option>
-                <option value="sum">Sum of Graphs</option>
-                <option value="diff">Difference of Graphs</option>
-            </select>
-            <select id="selmode">
-                <option value="xy">X,Y</option>
-                <option value="x">X</option>
-                <option value="y">Y</option>
-            </select>
-            <button id="reset">reset</button>
             <div id="graph">
             </div>
         </div>
         <div id="tooltip"></div>
-        <div id="menu"></div>
+        <div id="sidebar">
+            <div id="menu">
+            </div>
+            <div id="bottom">
+                <select id="period">
+                    <option value="3600">Hour</option>
+                    <option value="86400">Day</option>
+                    <option value="604800" selected>Week</option>
+                    <option value="2678400">Month</option>
+                    <option value="31622400">Year</option>
+                </select>
+                <select id="mode">
+                    <option value="normal">Normal</option>
+                    <option value="multi-axes">Multiple Axes</option>
+                    <option value="multi-graph">Multiple Graphs</option>
+                    <option value="sum">Sum of Graphs</option>
+                    <option value="diff">Difference of Graphs</option>
+                </select>
+                <select id="selmode">
+                    <option value="xy">X,Y</option>
+                    <option value="x">X</option>
+                    <option value="y">Y</option>
+                </select>
+                <button id="reset">reset</button>
+                <button id="refresh">refresh</button>
+                <ul>
+                    <li><a href="/index.html">Index</a></li>
+                    <li><a href="/custom.html">Custom</a></li>
+                </ul>
+            </div>
+        </div>
+        <div id="loader"></div>
     </body>
 </html>

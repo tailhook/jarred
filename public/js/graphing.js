@@ -256,10 +256,37 @@
         return groups;
     }
 
-    function Builder(rules, urls) {
+    function CustomRules() {
+    }
+    CustomRules.prototype.filter_files = function (filenames) {
+        return filenames;
+    }
+    CustomRules.prototype.make_graphs = function (rrds, builder) {
+        var tm = +new Date();
+        var graphs = [];
+        for(var i = 0, ni = rrds.length; i < ni; ++i) {
+            var rrd = rrds[i];
+            var fn = rrd.filename;
+            for(var k = 0, nk = rrd.datasets.length; k < nk; ++k) {
+                g = new Graph(fn + '-' + rrd.datasets[k], builder);
+                g.add_dataset({
+                    title: fn.substr(1),
+                    label: rrd.datasets[k]
+                    }, rrd, rrd.data, k);
+                graphs.push(g);
+            }
+        }
+        console.log("Instantiated", graphs, rrds,
+                    "in", +new Date() - tm, 'ms');
+        return {'': graphs};
+    }
+
+    function Builder(rules, filenames, content, menu) {
         this.rules = rules;
-        this.urls = urls;
+        this.filenames = filenames;
         this._cur_requests = [];
+        this.content = content;
+        this.menu = menu;
         var self = this;
         this.clean_requests = function () {
             var req = self._cur_requests;
@@ -274,8 +301,7 @@
         this._cur_requests.push(req);
         return req;
     }
-    Builder.prototype.download = function download() {
-        var urls = this.urls;
+    Builder.prototype.download = function download(urls) {
         var requests = [];
         var self = this;
         for(var i = 0, ni = urls.length; i < ni; ++i) {
@@ -335,14 +361,16 @@
     Builder.prototype.process_rrds = function(rrds) {
         var allgr = this.all_graphs = [];
         var graphs = this.rules.make_graphs(rrds, this);
-        var cont = $("#content");
-        var menu = $("#menu");
+        var cont = this.content;
+        var menu = this.menu;
         for(var i in graphs) {
             var glist = graphs[i];
             cont.append($('<a>').attr('name', i));
-            menu.append($("<li>").append(
-                $('<a>').attr('href', '#'+i).text(i)
-                ));
+            if(menu) {
+                menu.append($("<li>").append(
+                    $('<a>').attr('href', '#'+i).text(i)
+                    ));
+            }
             cont.append($('<h2>').text(i || ''));
             for(var j = 0, nj = glist.length; j < nj; ++j) {
                 var gr = glist[j];
@@ -397,8 +425,10 @@
     }
     Builder.prototype.clean = function clean() {
         this.all_graphs = null;
-        $("#content").empty();
-        $("#menu").empty();
+        this.content.empty();
+        if(this.menu) {
+            this.menu.empty();
+        }
         this.xrange = null;
     }
     Builder.prototype.redownload = function redownload() {
@@ -429,35 +459,12 @@
 
     window.Builder = Builder;
     window.Rules = Rules;
+    window.CustomRules = CustomRules;
+    window.Graph = Graph;
 })(this, jQuery);
 
 jQuery(function($) {
     $("#tooltip").hide();
-
-    var url = location.pathname;
-    if(url.substr(-5) == '.html') {
-        url = url.substr(0, url.length-5);
-    }
-    $.ajax({
-        'url': url + '.js',
-        'dataType': 'script'
-    }).pipe(null, function() {
-        return $.ajax({
-            'url': '/js/default_rules.js',
-            'dataType': 'script'
-            });
-    }).pipe(function() {
-        return $.when(window.current_rules, window.current_urls);
-    }).done(function() {
-        var builder = this.graph_builder = new Builder(
-            window.current_rules, window.current_urls);
-        builder.download();
-
-        $("#period").change(function() { builder.redownload(); });
-        $("#selmode").change(function() { builder.redraw(); });
-        $("#reset").click(function() { builder.reset(); });
-        $("#refresh").click(function() { builder.redownload(); });
-    });
 
     function select_next(selector) {
         var sel = $(selector);
@@ -487,6 +494,14 @@ jQuery(function($) {
     hk.add_key('S', function() { select_next("#selmode"); });
     hk.add_key('ss', function() { select_next("#selmode"); });
     hk.add_key('<C-s>', function() { select_prev("#selmode"); });
+    hk.add_key('mn', function() { $('#mode').val('normal').change(); });
+    hk.add_key('ml', function() { $('#mode').val('multi-axes').change(); });
+    hk.add_key('mg', function() { $('#mode').val('multi-graph').change(); });
+    hk.add_key('ms', function() { $('#mode').val('sum').change(); });
+    hk.add_key('md', function() { $('#mode').val('dif').change(); });
+    hk.add_key('M', function() { select_next("#mode"); });
+    hk.add_key('mm', function() { select_next("#mode"); });
+    hk.add_key('<C-m>', function() { select_prev("#mode"); });
     hk.add_key('<space>', function() { $("#reset").click(); });
     hk.add_key('<C-space>', function() { $("#refresh").click(); });
     hk.bind_to(document);
