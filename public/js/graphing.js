@@ -15,10 +15,10 @@
         delete info.title;
         delete info.graph;
         var data = [];
-        var start = rrd.start;
-        var step = rrd.step;
-        for(var i = 0, ni = alldata.length; i < ni; ++i) {
-            data.push([(start+step*i) * 1000, alldata[i][index]]);
+        for(var i = 0, ni = alldata.length,
+            tm = rrd.start*1000, step = rrd.step*1000;
+            i < ni; ++i, tm += step) {
+            data.push([tm, alldata[i][index]]);
         }
         info.data = data;
         if(!info.id) {
@@ -171,7 +171,8 @@
         return output;
     }
     var _skip_props = {'match_rrd': 1, 'match_item': 2};
-    var _subst_props = {'group': 1, 'graph': 1, 'title': 1, 'label': 1};
+    var _subst_props = {'group': 1, 'graph': 1,
+                        'title': 1, 'label': 1, 'id': 1};
     function _substitute(src, values) {
         var tgt = {};
         for(var i in src) {
@@ -185,10 +186,24 @@
         }
         return tgt;
     }
+    function _aggregate(a, data, index) {
+        if(a.aggregation == 'sum') {
+            for(var i = 0, ni = a.data.length; i < ni; ++i) {
+                if(a.data[i][1] == null || data[i][index] == null) {
+                    a.data[i][1] = null;
+                } else {
+                    a.data[i][1] += data[i][index];
+                }
+            }
+        } else {
+            console.error("Unknown aggregation", a.aggregation);
+        }
+    }
     Rules.prototype.make_graphs = function (rrds, builder) {
         var tm = +new Date();
         var groups = {};
         var graphs = {};
+        var datasets = {};
         for(var i = 0, ni = rrds.length; i < ni; ++i) {
             var rrd = rrds[i];
             var fn = rrd.filename;
@@ -210,6 +225,15 @@
                     }
                     subs.item = m;
                     var gparams = _substitute(rule, subs);
+                    if(gparams.id) {
+                        var ds = datasets[gparams.id];
+                        if(ds && ds.aggregation) {
+                            _aggregate(ds, rrd.data, k);
+                            continue;
+                        } else {
+                            datasets[gparams.id] = gparams;
+                        }
+                    }
                     var g = graphs[gparams.graph];
                     if(g) {
                         g.add_dataset(gparams, rrd, rrd.data, k);
