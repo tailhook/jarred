@@ -15,7 +15,7 @@ Routing:
       routing: !Suffix
       routing-by: !Path
       map:
-        "*.html":
+        "*":
           static:
             enabled: yes
             root: ./public
@@ -45,6 +45,7 @@ Routing:
           enabled: yes
           root: ./public
           restrict-root: no  # sorry can't for relative path
+          index-file: index.html
           deny-suffixes:
           - .swp  # vim backup file
           - .swo  # vim backup file

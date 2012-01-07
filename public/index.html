@@ -17,14 +17,14 @@
                         }
                         var servers = $("#servers");
                         var link = $("<a>")
-                            .attr('href', '/'+preset+'.html')
+                            .attr('href', '/'+preset)
                             .text(preset);
                         presets.append($("<li>").append(link));
                     });
                     var servers = $("#servers");
                     $.map(data.hosts, function(host) {
                         var link = $("<a>")
-                            .attr('href', '/'+host+'.html')
+                            .attr('href', '/'+host)
                             .text(host);
                         servers.append($("<li>").append(link));
                     });
