@@ -10,7 +10,7 @@ PID=`pidof -o %PPID /usr/bin/jarred-zgw`
 case "$1" in
   start)
     stat_busy "Starting jarred"
-    [ -z "$PID" ] && su jarred --shell=/bin/sh -c "exec /usr/bin/jarred-zgw -c ipc:///var/run/jarred/socket -p /rrd -d ${jarred_rrddir} &"
+    [ -z "$PID" ] && su jarred --shell=/bin/sh -c "exec /usr/bin/jarred-zgw -c ipc:///var/run/jarred/socket -d ${jarred_rrddir} &"
     if [ $? -gt 0 ]; then
       stat_fail
     else

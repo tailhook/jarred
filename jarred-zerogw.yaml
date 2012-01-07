@@ -1,28 +1,43 @@
-routing: !Prefix ~
-routing-by: !Uri ~
+routing: !Prefix
+routing-by: !Uri
 map:
-    "/rrd/*":
-      zmq-forward:
-        enabled: yes
-        timeout: 5
-        contents:
-        - !Uri
-        socket:
-        - !zmq.Bind ipc:///var/run/jarred/socket
+  "/*":
+    routing: !Suffix
+    routing-by: !Path
+    map:
+      "*":
+        static:
+          enabled: yes
+          root: /usr/share/jarred/public
+          single-uri: /default.html
+          restrict-root: no  # sorry can't for relative path
+      "*.js":
+        static:
+          enabled: yes
+          root: /etc/jarred
+          restrict-dirs:
+            - /etc/jarred
+            - /usr/share/jarred/public
+      "*.json":
+        zmq-forward:
+          enabled: yes
+          timeout: 5
+          contents:
+          - !Uri
+          socket:
+          - !zmq.Bind ipc:///var/run/jarred/socket
 children:
     - match:
+      - "/"
       - "/js/*"
       - "/css/*"
-      - "/index.html"
       - "/custom.html"
-      - "/"
+      - "/index.html"
       static:
         enabled: yes
         root: /usr/share/jarred/public
+        restrict-root: yes
         index-file: index.html
-        restrict-root: no  # want to serve files from /etc/jarred
-                           # It's insecure if you give anybody
-                           # access to /usr/share/jarred/public
         deny-suffixes:
         - .swp  # vim backup file
         - .swo  # vim backup file
