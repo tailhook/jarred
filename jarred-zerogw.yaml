@@ -10,11 +10,12 @@ map:
           enabled: yes
           root: /usr/share/jarred/public
           single-uri: /default.html
-          restrict-root: no  # sorry can't for relative path
+          restrict-root: yes
       "*.js":
         static:
           enabled: yes
           root: /etc/jarred
+          restrict-root: no  # will restrict to dirs
           restrict-dirs:
             - /etc/jarred
             - /usr/share/jarred/public
